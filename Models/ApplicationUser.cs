@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Identity;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace FazaBoa_API.Models
 {
@@ -7,10 +8,12 @@ namespace FazaBoa_API.Models
     {
         public string FullName { get; set; }
         public bool IsDependent { get; set; }
-        public string MasterUserId { get; set; }
-        public virtual ApplicationUser MasterUser { get; set; }
 
-        public string ProfilePhotoUrl { get; set; }
+        [ForeignKey(nameof(MasterUser))]
+        public string? MasterUserId { get; set; }
+        public virtual ApplicationUser? MasterUser { get; set; }
+
+        public string? ProfilePhotoUrl { get; set; }
         public virtual ICollection<Group> Groups { get; set; } = new List<Group>();
     }
 }

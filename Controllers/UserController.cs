@@ -59,7 +59,9 @@ namespace FazaBoa_API.Controllers
                     Email = model.Email,
                     SecurityStamp = Guid.NewGuid().ToString(),
                     UserName = model.Email,
-                    FullName = model.FullName
+                    FullName = model.FullName,
+                    IsDependent = model.IsDependent,
+                    MasterUserId = model.IsDependent ? model.MasterUserId : null
                 };
 
                 var result = await _userManager.CreateAsync(user, model.Password);
@@ -107,7 +109,15 @@ namespace FazaBoa_API.Controllers
                     new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 };
 
-                var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+                // Certificando-se de que a chave JWT seja obtida da variável de ambiente
+                var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY");
+                if (string.IsNullOrEmpty(jwtKey))
+                {
+                    Log.Error("JWT Key not found in environment variables.");
+                    return StatusCode(500, new { Message = "Internal Server Error" });
+                }
+
+                var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
                 var token = new JwtSecurityToken(
                     issuer: _configuration["Jwt:Issuer"],
@@ -115,7 +125,7 @@ namespace FazaBoa_API.Controllers
                     expires: DateTime.Now.AddHours(3),
                     claims: authClaims,
                     signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
-                    );
+                );
 
                 return Ok(new
                 {

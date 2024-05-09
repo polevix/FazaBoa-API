@@ -1,0 +1,100 @@
+# **Boas Práticas Gerais**
+
+# Arquivos de Log
+logs/
+*.log
+
+# Arquivos temporários e backup
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+~*
+
+# Arquivos de diretórios de sistema
+.DS_Store
+Thumbs.db
+
+# Arquivos de configuração IDE/Editor
+.idea/
+.vscode/
+*.iml
+
+# Arquivos gerados por compiladores ou ferramentas
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Arquivos binários (objetos, compilação)
+bin/
+obj/
+
+# Saídas de Testes
+test-results/
+*.coverage
+
+# Saída de Build
+build/
+dist/
+
+# Arquivos de dependências de pacotes
+node_modules/
+bower_components/
+__pycache__/
+target/
+
+# **API FazaBoa**
+
+# Arquivos de configuração de aplicação (dados sensíveis)
+appsettings.json
+appsettings.Development.json
+appsettings.Production.json
+
+# Certificados e Chaves
+*.pem
+*.pfx
+certificate/
+private/
+
+# Diretórios com artefatos de publicação
+wwwroot/profile-photos/
+logs/
+certificate/
+
+# Saída de publicação
+publish/
+publish_tmp/
+
+# Arquivos binários de EfCore Migration
+*.Designer.cs
+
+# Cache do EF Core
+*.edmx.sql
+
+# Arquivos de Migrations compilados
+Migrations/
+
+# Arquivos temporários de desenvolvimento
+debug.log
+
+# **Serilog Logs**
+logs/log.txt
+
+# **Docker e CI/CD**
+
+# Arquivos temporários de Docker
+docker-compose.override.yml
+
+# Configurações de ambiente de CI/CD
+.env
+*.env
+
+# **Exclusões Específicas**
+
+# Certos arquivos na pasta `wwwroot`
+!wwwroot/index.html
+!wwwroot/favicon.ico
+

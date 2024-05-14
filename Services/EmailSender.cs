@@ -1,40 +1,58 @@
+using System;
 using System.Net;
 using System.Net.Mail;
-using FazaBoa_API.Services;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
-public class EmailSender : IEmailSender
+namespace FazaBoa_API.Services
 {
-    private readonly IConfiguration _configuration;
-
-    public EmailSender(IConfiguration configuration)
+    public class EmailSender : IEmailSender
     {
-        _configuration = configuration;
-    }
+        private readonly IConfiguration _configuration;
+        private readonly ILogger<EmailSender> _logger;
 
-    public async Task SendEmailAsync(string email, string subject, string message)
-    {
-        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(subject) || string.IsNullOrEmpty(message))
+        public EmailSender(IConfiguration configuration, ILogger<EmailSender> logger)
         {
-            throw new ArgumentException("Email, subject, and message are required.");
+            _configuration = configuration;
+            _logger = logger;
         }
 
-        var smtpClient = new SmtpClient
+        public async Task SendEmailAsync(string email, string subject, string message)
         {
-            Host = _configuration["Smtp:Host"],
-            Port = int.Parse(_configuration["Smtp:Port"]),
-            EnableSsl = bool.Parse(_configuration["Smtp:EnableSsl"]),
-            Credentials = new NetworkCredential(_configuration["Smtp:Username"], _configuration["Smtp:Password"])
-        };
+            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(subject) || string.IsNullOrEmpty(message))
+            {
+                _logger.LogError("Email, subject, or message is null or empty.");
+                throw new ArgumentException("Email, subject, and message are required.");
+            }
 
-        var mailMessage = new MailMessage
-        {
-            From = new MailAddress(_configuration["Smtp:Username"]),
-            Subject = subject,
-            Body = message,
-            IsBodyHtml = true
-        };
-        mailMessage.To.Add(email);
+            try
+            {
+                var smtpClient = new SmtpClient
+                {
+                    Host = _configuration["Smtp:Host"],
+                    Port = int.Parse(_configuration["Smtp:Port"]),
+                    EnableSsl = bool.Parse(_configuration["Smtp:EnableSsl"]),
+                    Credentials = new NetworkCredential(_configuration["Smtp:Username"], _configuration["Smtp:Password"])
+                };
 
-        await smtpClient.SendMailAsync(mailMessage);
+                var mailMessage = new MailMessage
+                {
+                    From = new MailAddress(_configuration["Smtp:Username"]),
+                    Subject = subject,
+                    Body = message,
+                    IsBodyHtml = true
+                };
+                mailMessage.To.Add(email);
+
+                await smtpClient.SendMailAsync(mailMessage);
+                _logger.LogInformation("Email sent successfully to {email}", email);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send email to {email}", email);
+                throw;
+            }
+        }
     }
 }

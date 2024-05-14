@@ -78,7 +78,7 @@ namespace FazaBoa_API.Controllers
 
                 Log.Information("Confirmation Link: {Link}", confirmationLink);
 
-                return Ok(CreateResponse("Success", "User created successfully! Please confirm your email."));
+                return Ok(CreateResponse("Success", "User created successfully!"));
             }
             catch (Exception ex)
             {
@@ -117,7 +117,7 @@ namespace FazaBoa_API.Controllers
                 var token = new JwtSecurityToken(
                     issuer: _configuration["Jwt:Issuer"],
                     audience: _configuration["Jwt:Audience"],
-                    expires: DateTime.UtcNow.AddDays(7),
+                    expires: DateTime.UtcNow.AddHours(3),
                     claims: authClaims,
                     signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
                 );
@@ -285,6 +285,8 @@ namespace FazaBoa_API.Controllers
         /// <param name="userId">ID do usuário</param>
         /// <returns>Retorna os detalhes do perfil ou uma mensagem de erro</returns>
         [HttpGet("profile/{userId}")]
+
+        // Métodos
         public async Task<IActionResult> GetUserProfile(string userId)
         {
             var requestingUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -349,20 +351,8 @@ namespace FazaBoa_API.Controllers
             });
         }
 
-        /// <summary>
-        /// Envia um email de confirmação de conta.
-        /// </summary>
-        /// <param name="user">Usuário a ser confirmado</param>
-        /// <param name="token">Token de confirmação</param>
-        /// <returns>Retorna uma mensagem de sucesso ou erro</returns>
-        private async Task<IActionResult> SendAccountConfirmationEmail(ApplicationUser user, string token)
-        {
-            var confirmationLink = $"{_configuration["ClientAppUrl"]}/confirm-email?userId={user.Id}&token={Uri.EscapeDataString(token)}";
-            // Implemente o envio de email conforme necessário
-            return Ok(new { Message = "Confirmation email sent", ConfirmationLink = confirmationLink });
-        }
-
         private Response CreateResponse(string status, string message, List<string> errors = null)
+
         {
             return new Response
             {
@@ -371,6 +361,7 @@ namespace FazaBoa_API.Controllers
                 Errors = errors ?? new List<string>()
             };
         }
+
         private JwtSecurityToken GenerateJwtToken(IEnumerable<Claim> claims)
         {
             var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? throw new InvalidOperationException("JWT Key is not set in environment variables");
@@ -415,5 +406,6 @@ namespace FazaBoa_API.Controllers
 
             return principal;
         }
+
     }
 }

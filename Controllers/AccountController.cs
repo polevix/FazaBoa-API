@@ -35,22 +35,22 @@ public class AccountController : ControllerBase
     {
         if (string.IsNullOrEmpty(model.Email))
         {
-            return BadRequest(new { Message = "Email is required" });
+            return BadRequest(new { Message = "O email é obrigatório" });
         }
 
         var user = await _userManager.FindByEmailAsync(model.Email);
         if (user == null)
         {
-            return BadRequest(new { Message = "User with this email does not exist" });
+            return BadRequest(new { Message = "Usuário com este email não existe" });
         }
 
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
         var resetUrl = $"{_configuration["ClientAppUrl"]}/reset-password?token={WebUtility.UrlEncode(token)}&email={WebUtility.UrlEncode(user.Email)}";
 
         var emailMessage = _emailSender.GenerateForgotPasswordMessage(resetUrl);
-        await _emailSender.SendEmailAsync(user.Email, "Password Reset", emailMessage);
+        await _emailSender.SendEmailAsync(user.Email, "Redefinição de Senha", emailMessage);
 
-        return Ok(new { Message = "Password reset link sent to email" });
+        return Ok(new { Message = "Link de redefinição de senha enviado para o email" });
     }
 
     /// <summary>
@@ -65,23 +65,23 @@ public class AccountController : ControllerBase
         ValidationResult validationResult = await _resetPasswordValidator.ValidateAsync(model);
         if (!validationResult.IsValid)
         {
-            return BadRequest(new { Message = "Validation failed", Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList() });
+            return BadRequest(new { Message = "Falha na validação", Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList() });
         }
 
         var user = await _userManager.FindByEmailAsync(model.Email);
         if (user == null)
         {
-            return BadRequest(new { Message = "Invalid email" });
+            return BadRequest(new { Message = "Email inválido" });
         }
 
         var decodedToken = WebUtility.UrlDecode(model.Token);
         var result = await _userManager.ResetPasswordAsync(user, decodedToken, model.NewPassword);
         if (!result.Succeeded)
         {
-            Log.Error("Error resetting password for user {Email}: {Errors}", model.Email, string.Join(", ", result.Errors.Select(e => e.Description)));
-            return BadRequest(new { Message = "Error resetting password", Errors = result.Errors });
+            Log.Error("Erro ao redefinir a senha para o usuário {Email}: {Errors}", model.Email, string.Join(", ", result.Errors.Select(e => e.Description)));
+            return BadRequest(new { Message = "Erro ao redefinir a senha", Errors = result.Errors });
         }
 
-        return Ok(new { Message = "Password reset successfully" });
+        return Ok(new { Message = "Senha redefinida com sucesso" });
     }
 }

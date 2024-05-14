@@ -15,5 +15,8 @@ namespace FazaBoa_API.Models
 
         public string? ProfilePhotoUrl { get; set; }
         public virtual ICollection<Group> Groups { get; set; } = new List<Group>();
+
+        public string? RefreshToken { get; set; }  // Armazena o refresh token
+        public DateTime RefreshTokenExpiryTime { get; set; }  // Armazena a data de expiração do refresh token
     }
 }

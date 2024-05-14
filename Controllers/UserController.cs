@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using FluentValidation;
 using FluentValidation.Results;
 using Serilog;
+using System.Security.Cryptography;
 
 namespace FazaBoa_API.Controllers
 {
@@ -109,28 +110,30 @@ namespace FazaBoa_API.Controllers
                     new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 };
 
-                // Certificando-se de que a chave JWT seja obtida da variável de ambiente
-                var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY");
-                if (string.IsNullOrEmpty(jwtKey))
-                {
-                    Log.Error("JWT Key not found in environment variables.");
-                    return StatusCode(500, new { Message = "Internal Server Error" });
-                }
-
+                // Generate JWT
+                var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? throw new InvalidOperationException("JWT Key is not set in environment variables");
                 var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
                 var token = new JwtSecurityToken(
                     issuer: _configuration["Jwt:Issuer"],
                     audience: _configuration["Jwt:Audience"],
-                    expires: DateTime.Now.AddHours(3),
+                    expires: DateTime.UtcNow.AddDays(7),
                     claims: authClaims,
                     signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
                 );
 
+                // Generate Refresh Token
+                var refreshToken = GenerateRefreshToken();
+                user.RefreshToken = refreshToken;
+                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+
+                await _userManager.UpdateAsync(user);
+
                 return Ok(new
                 {
                     token = new JwtSecurityTokenHandler().WriteToken(token),
-                    expiration = token.ValidTo
+                    expiration = token.ValidTo,
+                    refreshToken = refreshToken
                 });
             }
             return Unauthorized(new { Message = "Invalid credentials" });
@@ -141,9 +144,60 @@ namespace FazaBoa_API.Controllers
         /// </summary>
         /// <returns>Retorna uma mensagem de sucesso</returns>
         [HttpPost("logout")]
-        public IActionResult Logout()
+        [Authorize] // Este endpoint exige autenticação
+        public async Task<IActionResult> Logout()
         {
+            // Obtém o ID do usuário autenticado
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+            {
+                return Unauthorized(new { Message = "User not found" });
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                return Unauthorized(new { Message = "Invalid user" });
+            }
+
+            // Limpa o refresh token do usuário para prevenir novas autenticações usando o mesmo
+            user.RefreshToken = null;
+            user.RefreshTokenExpiryTime = System.DateTime.UtcNow; // Define a data de expiração do refresh token para o momento atual
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+            {
+                return BadRequest(new { Message = "Failed to logout user." });
+            }
+
             return Ok(new { Message = "Logged out successfully" });
+        }
+
+        [HttpPost("refresh-token")]
+        [AllowAnonymous]
+        public async Task<IActionResult> RefreshToken([FromBody] TokenApiModel model)
+        {
+            if (model is null || string.IsNullOrEmpty(model.RefreshToken))
+                return BadRequest("Invalid client request");
+
+            var principal = GetPrincipalFromExpiredToken(model.Token);
+            var username = principal.Identity?.Name;
+
+            var user = await _userManager.FindByNameAsync(username);
+            if (user == null || user.RefreshToken != model.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+                return BadRequest("Invalid client request");
+
+            var newJwtToken = GenerateJwtToken(principal.Claims);
+            var newRefreshToken = GenerateRefreshToken();
+
+            user.RefreshToken = newRefreshToken;
+            await _userManager.UpdateAsync(user);
+
+            return new ObjectResult(new
+            {
+                token = new JwtSecurityTokenHandler().WriteToken(newJwtToken),
+                refreshToken = newRefreshToken
+            });
         }
 
         /// <summary>
@@ -316,6 +370,50 @@ namespace FazaBoa_API.Controllers
                 Message = message,
                 Errors = errors ?? new List<string>()
             };
+        }
+        private JwtSecurityToken GenerateJwtToken(IEnumerable<Claim> claims)
+        {
+            var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? throw new InvalidOperationException("JWT Key is not set in environment variables");
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: _configuration["Jwt:Issuer"],
+                audience: _configuration["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.Now.AddMinutes(30),
+                signingCredentials: creds
+            );
+
+            return token;
+        }
+
+        private string GenerateRefreshToken()
+        {
+            var randomNumber = new byte[32];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomNumber);
+            return Convert.ToBase64String(randomNumber);
+        }
+
+        private ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
+        {
+            var tokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateAudience = false,
+                ValidateIssuer = false,
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"])),
+                ValidateLifetime = false
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
+            var jwtSecurityToken = securityToken as JwtSecurityToken;
+            if (jwtSecurityToken == null || !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+                throw new SecurityTokenException("Invalid token");
+
+            return principal;
         }
     }
 }

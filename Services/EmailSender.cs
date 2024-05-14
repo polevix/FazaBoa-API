@@ -54,5 +54,18 @@ namespace FazaBoa_API.Services
                 throw;
             }
         }
+
+        public string GenerateForgotPasswordMessage(string resetUrl)
+        {
+            return $@"
+                <html>
+                <body>
+                    <h2>Redefinição de Senha</h2>
+                    <p>Você solicitou a redefinição de sua senha. Clique no link abaixo para redefinir sua senha:</p>
+                    <a href='{resetUrl}'>Redefinir Senha</a>
+                    <p>Se você não solicitou a redefinição de senha, ignore este e-mail.</p>
+                </body>
+                </html>";
+        }
     }
 }

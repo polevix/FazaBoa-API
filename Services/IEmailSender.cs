@@ -11,5 +11,12 @@ namespace FazaBoa_API.Services
         /// <param name="subject">Subject of the email.</param>
         /// <param name="message">Message body of the email.</param>
         Task SendEmailAsync(string email, string subject, string message);
+
+        /// <summary>
+        /// Generates the forgot password message.
+        /// </summary>
+        /// <param name="resetUrl">The reset URL.</param>
+        /// <returns>The HTML message string.</returns>
+        string GenerateForgotPasswordMessage(string resetUrl);
     }
 }

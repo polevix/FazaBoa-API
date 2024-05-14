@@ -21,16 +21,12 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
-// Carrega variáveis de ambiente do arquivo `.env`
-Env.Load();
-
 // Verifica e obtém a chave JWT a partir das variáveis de ambiente
 var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY");
 if (string.IsNullOrEmpty(jwtKey) || jwtKey.Length < 16)
 {
     throw new Exception("JWT Key not found or is too short in environment variables.");
 }
-Console.WriteLine($"JWT Key Loaded: {new string('*', jwtKey.Length)}");
 
 // Configurando banco de dados
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -49,6 +45,9 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
+
+// Carrega variáveis de ambiente do arquivo `.env`
+Env.Load();
 
 // Configuração JWT
 builder.Services.AddAuthentication(options =>
@@ -92,6 +91,7 @@ builder.Services.AddCors(options =>
 // Configurando Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 
 builder.Services.AddControllers();
 

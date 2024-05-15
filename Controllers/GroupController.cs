@@ -150,6 +150,9 @@ public class GroupController : ControllerBase
             return Unauthorized(new { Message = "Master user not found" });
 
         var applicationUser = await _context.Users.FindAsync(userId);
+        if (applicationUser == null)
+            return NotFound(new { Message = "User not found" });
+
         applicationUser.IsDependent = true;
         applicationUser.MasterUserId = masterUserId;
         await _context.SaveChangesAsync();

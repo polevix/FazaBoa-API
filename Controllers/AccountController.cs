@@ -47,8 +47,11 @@ public class AccountController : ControllerBase
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
         var resetUrl = $"{_configuration["ClientAppUrl"]}/reset-password?token={WebUtility.UrlEncode(token)}&email={WebUtility.UrlEncode(user.Email)}";
 
-        var emailMessage = _emailSender.GenerateForgotPasswordMessage(resetUrl);
-        await _emailSender.SendEmailAsync(user.Email, "Redefinição de Senha", emailMessage);
+        if (user.Email != null)
+        {
+            var emailMessage = _emailSender.GenerateForgotPasswordMessage(resetUrl);
+            await _emailSender.SendEmailAsync(user.Email, "Redefinição de Senha", emailMessage);
+        }
 
         return Ok(new { Message = "Link de redefinição de senha enviado para o email" });
     }

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace FazaBoa_API.Models
 {
-    public class TokenApiModel
+    public class TokenApi
     {
         public string Token { get; set; }
         public string RefreshToken { get; set; }

@@ -6,7 +6,7 @@ namespace FazaBoa_API.Models
     public class Challenge
     {
         public int Id { get; set; }
-        public string Name { get; set; }
+        public string Name { get; set; } 
         public string Description { get; set; }
         public int CoinValue { get; set; }
         public DateTime? StartDate { get; set; }

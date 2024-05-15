@@ -175,7 +175,7 @@ namespace FazaBoa_API.Controllers
 
         [HttpPost("refresh-token")]
         [AllowAnonymous]
-        public async Task<IActionResult> RefreshToken([FromBody] TokenApiModel model)
+        public async Task<IActionResult> RefreshToken([FromBody] TokenApi model)
         {
             if (model is null || string.IsNullOrEmpty(model.RefreshToken))
                 return BadRequest("Invalid client request");

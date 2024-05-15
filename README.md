@@ -87,59 +87,62 @@ Depois:
 dotnet ef database update
 ```
 
-Executando a Aplicação
+5. Executando a Aplicação
 
 Inicie a aplicação:
 ```
 dotnet run
 ```
-## A API estará disponível em https://localhost:5019.
+### A API estará disponível em https://localhost:5019.
 
-### Funcionalidades
-Autenticação e Autorização
-Registro de Usuário: Permite que novos usuários se registrem na plataforma.
-Login: Gera um token JWT para autenticação.
-Logout: Invalida o refresh token do usuário.
-Esqueci a Senha: Envia um link de redefinição de senha para o email do usuário.
+## Funcionalidades
+
+### Autenticação e Autorização
+Registro de Usuário: Permite que novos usuários se registrem na plataforma.\
+Login: Gera um token JWT para autenticação.\
+Logout: Invalida o refresh token do usuário.\
+Esqueci a Senha: Envia um link de redefinição de senha para o email do usuário.\
 Redefinir Senha: Permite que o usuário redefina sua senha usando um token de redefinição.
 
 ### Gestão de Desafios
-Criar Desafio: Permite que usuários criem novos desafios.
-Obter Detalhes do Desafio: Retorna os detalhes de um desafio específico.
-Atualizar Desafio: Permite que o criador do desafio atualize suas informações.
-Excluir Desafio: Permite que o criador do desafio o exclua.
-Marcar Desafio como Concluído: Permite que os usuários marquem desafios como concluídos.
+Criar Desafio: Permite que usuários criem novos desafios.\
+Obter Detalhes do Desafio: Retorna os detalhes de um desafio específico.\
+Atualizar Desafio: Permite que o criador do desafio atualize suas informações.\
+Excluir Desafio: Permite que o criador do desafio o exclua.\
+Marcar Desafio como Concluído: Permite que os usuários marquem desafios como concluídos.\
 Validar Conclusão de Desafio: Permite que o criador do desafio valide sua conclusão.
 
 ### Gestão de Grupos
-Criar Grupo: Permite que usuários criem novos grupos.
-Obter Detalhes do Grupo: Retorna os detalhes de um grupo específico.
-Adicionar Membro ao Grupo: Permite adicionar membros a um grupo.
-Remover Membro do Grupo: Permite remover membros de um grupo.
-Marcar Membro como Dependente: Permite que o criador do grupo marque um membro como dependente.
-Adicionar Dependente ao Grupo: Permite adicionar dependentes ao grupo.
-Obter Dependentes do Grupo: Retorna uma lista de dependentes de um grupo.
+Criar Grupo: Permite que usuários criem novos grupos.\
+Obter Detalhes do Grupo: Retorna os detalhes de um grupo específico.\
+Adicionar Membro ao Grupo: Permite adicionar membros a um grupo.\
+Remover Membro do Grupo: Permite remover membros de um grupo.\
+Marcar Membro como Dependente: Permite que o criador do grupo marque um membro como dependente.\
+Adicionar Dependente ao Grupo: Permite adicionar dependentes ao grupo.\
+Obter Dependentes do Grupo: Retorna uma lista de dependentes de um grupo.\
 Excluir Grupo: Permite que o criador do grupo o exclua.
 
 ### Gestão de Moedas
-Obter Saldo de Moedas: Retorna o saldo de moedas de um usuário em um grupo específico.
-Adicionar Saldo de Moedas: Adiciona moedas ao saldo de um usuário.
+Obter Saldo de Moedas: Retorna o saldo de moedas de um usuário em um grupo específico.\
+Adicionar Saldo de Moedas: Adiciona moedas ao saldo de um usuário.\
 Gastar Saldo de Moedas: Deduz moedas do saldo de um usuário.
 
 ### Gestão de Recompensas
-Criar Recompensa: Permite que usuários criem novas recompensas.
-Obter Recompensas do Grupo: Retorna uma lista de recompensas de um grupo específico.
-Excluir Recompensa: Permite que o criador da recompensa a exclua.
-Resgatar Recompensa: Permite que os usuários resgatem recompensas.
+Criar Recompensa: Permite que usuários criem novas recompensas.\
+Obter Recompensas do Grupo: Retorna uma lista de recompensas de um grupo específico.\
+Excluir Recompensa: Permite que o criador da recompensa a exclua.\
+Resgatar Recompensa: Permite que os usuários resgatem recompensas.\
 Obter Recompensas Resgatadas: Retorna uma lista de recompensas resgatadas por um usuário em um grupo específico.
 
 ### Tecnologias Utilizadas
-.NET 8.0
-Entity Framework Core
-MySQL
-JWT para autenticação
-FluentValidation para validação de modelos
-Serilog para logging
-Swagger para documentação da API
-Postman para testes nos End-Points
+.NET 8.0\
+Entity Framework Core\
+MySQL\
+JWT para autenticação\
+FluentValidation para validação de modelos\
+Serilog para logging\
+Swagger para documentação da API\
+Postman para testes nos End-Points\
 CORS para permitir requisições de diferentes origens
+
+## Desenvolvido por Felipe Melo

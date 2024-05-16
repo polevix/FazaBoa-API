@@ -73,6 +73,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddScoped<IValidator<Register>, RegisterValidator>();
 builder.Services.AddScoped<IValidator<ResetPassword>, ResetPasswordValidator>();
+builder.Services.AddScoped<IValidator<Group>, GroupValidator>();
 
 // Configurando serviços personalizados
 builder.Services.AddScoped<IEmailSender, EmailSender>();

@@ -4,6 +4,8 @@ using FazaBoa_API.Models;
 using FazaBoa_API.Data;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using FluentValidation;
+using FluentValidation.Results;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -11,10 +13,12 @@ using System.Security.Claims;
 public class GroupController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly IValidator<Group> _groupValidator;
 
-    public GroupController(ApplicationDbContext context)
+    public GroupController(ApplicationDbContext context, IValidator<Group> groupValidator)
     {
         _context = context;
+        _groupValidator = groupValidator;
     }
 
     /// <summary>
@@ -25,13 +29,36 @@ public class GroupController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateGroup([FromBody] Group group)
     {
-        if (string.IsNullOrEmpty(group.Name))
+        // Validação do modelo
+        ValidationResult validationResult = await _groupValidator.ValidateAsync(group);
+        if (!validationResult.IsValid)
         {
-            return BadRequest(new { Message = "Invalid group data" });
+            return BadRequest(new { Message = "Dados do grupo inválidos", Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList() });
         }
 
-        _context.Groups.Add(group);
-        await _context.SaveChangesAsync();
+        // Obtém o ID do usuário autenticado
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userId == null)
+        {
+            return Unauthorized(new { Message = "Usuário não autorizado" });
+        }
+
+        group.CreatedById = userId;
+        group.Members.Add(new ApplicationUser { Id = userId });
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            _context.Groups.Add(group);
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            return StatusCode(500, new { Message = "Erro ao criar o grupo" });
+        }
+
         return Ok(group);
     }
 

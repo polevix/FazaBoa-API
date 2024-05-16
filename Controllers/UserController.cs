@@ -106,6 +106,7 @@ namespace FazaBoa_API.Controllers
             {
                 var authClaims = new List<Claim>
                 {
+                    new Claim(ClaimTypes.NameIdentifier, user.Id),
                     new Claim(ClaimTypes.Name, user.UserName),
                     new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 };
@@ -149,7 +150,7 @@ namespace FazaBoa_API.Controllers
         {
             // Obtém o ID do usuário autenticado
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null)
+            if (string.IsNullOrEmpty(userId))
             {
                 return Unauthorized(new { Message = "User not found" });
             }
@@ -162,7 +163,7 @@ namespace FazaBoa_API.Controllers
 
             // Limpa o refresh token do usuário para prevenir novas autenticações usando o mesmo
             user.RefreshToken = null;
-            user.RefreshTokenExpiryTime = System.DateTime.UtcNow; // Define a data de expiração do refresh token para o momento atual
+            user.RefreshTokenExpiryTime = DateTime.UtcNow; // Define a data de expiração do refresh token para o momento atual
 
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
@@ -173,6 +174,10 @@ namespace FazaBoa_API.Controllers
             return Ok(new { Message = "Logged out successfully" });
         }
 
+        /// <summary>
+        /// Realiza a atualização to token.
+        /// </summary>
+        /// <returns>Retorna o token com o token atualizado</returns>
         [HttpPost("refresh-token")]
         [AllowAnonymous]
         public async Task<IActionResult> RefreshToken([FromBody] TokenApi model)

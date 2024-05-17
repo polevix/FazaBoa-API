@@ -182,7 +182,7 @@ namespace FazaBoa_API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> RefreshToken([FromBody] TokenApi model)
         {
-            if (model is null || string.IsNullOrEmpty(model.RefreshToken))
+            if (model == null || string.IsNullOrEmpty(model.Token) || string.IsNullOrEmpty(model.RefreshToken))
                 return BadRequest("Invalid client request");
 
             var principal = GetPrincipalFromExpiredToken(model.Token);
@@ -204,6 +204,7 @@ namespace FazaBoa_API.Controllers
                 refreshToken = newRefreshToken
             });
         }
+
 
         /// <summary>
         /// Realiza o login de um dependente.
@@ -377,7 +378,7 @@ namespace FazaBoa_API.Controllers
                 issuer: _configuration["Jwt:Issuer"],
                 audience: _configuration["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(30),
+                expires: DateTime.UtcNow.AddHours(3),
                 signingCredentials: creds
             );
 
@@ -394,13 +395,21 @@ namespace FazaBoa_API.Controllers
 
         private ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
         {
+            if (string.IsNullOrEmpty(token))
+                throw new ArgumentNullException(nameof(token), "Token cannot be null or empty");
+
+            var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? _configuration["Jwt:Key"];
+            Log.Information("JWT Key loaded: {JwtKey}", jwtKey);  // Log para verificar a chave JWT
+            if (string.IsNullOrEmpty(jwtKey))
+                throw new InvalidOperationException("JWT Key is not set in configuration");
+
             var tokenValidationParameters = new TokenValidationParameters
             {
                 ValidateAudience = false,
                 ValidateIssuer = false,
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"])),
-                ValidateLifetime = false
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+                ValidateLifetime = false // Aqui estamos ignorando a validade do token
             };
 
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -411,6 +420,8 @@ namespace FazaBoa_API.Controllers
 
             return principal;
         }
+
+
 
     }
 }

@@ -12,6 +12,7 @@ using FluentValidation;
 using FluentValidation.Results;
 using Serilog;
 using System.Security.Cryptography;
+using System.IO;
 
 namespace FazaBoa_API.Controllers
 {
@@ -96,48 +97,59 @@ namespace FazaBoa_API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] Login model)
         {
-            if (string.IsNullOrEmpty(model.Email))
+            try
             {
-                return BadRequest(new { Message = "Email is required" });
-            }
+                if (string.IsNullOrEmpty(model.Email))
+                {
+                    return BadRequest(new { Message = "Email is required" });
+                }
 
-            var user = await _userManager.FindByEmailAsync(model.Email);
-            if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
+                var user = await _userManager.FindByEmailAsync(model.Email);
+                if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
+                {
+                    var authClaims = new List<Claim>
             {
-                var authClaims = new List<Claim>
-                {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id),
-                    new Claim(ClaimTypes.Name, user.UserName),
-                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                };
+                new Claim(ClaimTypes.NameIdentifier, user.Id),
+                new Claim(ClaimTypes.Name, user.UserName),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            };
 
-                // Generate JWT
-                var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? throw new InvalidOperationException("JWT Key is not set in environment variables");
-                var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
+                    // Generate JWT
+                    var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? throw new InvalidOperationException("JWT Key is not set in environment variables");
+                    var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
-                var token = new JwtSecurityToken(
-                    issuer: _configuration["Jwt:Issuer"],
-                    audience: _configuration["Jwt:Audience"],
-                    expires: DateTime.UtcNow.AddHours(3),
-                    claims: authClaims,
-                    signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
-                );
+                    var token = new JwtSecurityToken(
+                        issuer: _configuration["Jwt:Issuer"],
+                        audience: _configuration["Jwt:Audience"],
+                        expires: DateTime.UtcNow.AddHours(3),
+                        claims: authClaims,
+                        signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
+                    );
 
-                // Generate Refresh Token
-                var refreshToken = GenerateRefreshToken();
-                user.RefreshToken = refreshToken;
-                user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+                    // Generate Refresh Token
+                    var refreshToken = GenerateRefreshToken();
+                    user.RefreshToken = refreshToken;
+                    user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
 
-                await _userManager.UpdateAsync(user);
+                    await _userManager.UpdateAsync(user);
 
-                return Ok(new
-                {
-                    token = new JwtSecurityTokenHandler().WriteToken(token),
-                    expiration = token.ValidTo,
-                    refreshToken = refreshToken
-                });
+                    return Ok(new
+                    {
+                        token = new JwtSecurityTokenHandler().WriteToken(token),
+                        expiration = token.ValidTo,
+                        refreshToken = refreshToken
+                    });
+                }
+                return Unauthorized(new { Message = "Invalid credentials" });
             }
-            return Unauthorized(new { Message = "Invalid credentials" });
+            catch (Exception ex)
+            {
+                // Log the exception
+                Log.Error(ex, "Error occurred during login");
+
+                // Return a generic error message
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An error occurred while processing your request" });
+            }
         }
 
         /// <summary>
@@ -183,28 +195,39 @@ namespace FazaBoa_API.Controllers
         public async Task<IActionResult> RefreshToken([FromBody] TokenApi model)
         {
             if (model == null || string.IsNullOrEmpty(model.Token) || string.IsNullOrEmpty(model.RefreshToken))
-                return BadRequest("Invalid client request");
-
-            var principal = GetPrincipalFromExpiredToken(model.Token);
-            var username = principal.Identity?.Name;
-
-            var user = await _userManager.FindByNameAsync(username);
-            if (user == null || user.RefreshToken != model.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
-                return BadRequest("Invalid client request");
-
-            var newJwtToken = GenerateJwtToken(principal.Claims);
-            var newRefreshToken = GenerateRefreshToken();
-
-            user.RefreshToken = newRefreshToken;
-            await _userManager.UpdateAsync(user);
-
-            return new ObjectResult(new
             {
-                token = new JwtSecurityTokenHandler().WriteToken(newJwtToken),
-                refreshToken = newRefreshToken
-            });
-        }
+                return BadRequest("Invalid client request");
+            }
 
+            try
+            {
+                var principal = GetPrincipalFromExpiredToken(model.Token);
+                var username = principal.Identity?.Name;
+
+                var user = await _userManager.FindByNameAsync(username);
+                if (user == null || user.RefreshToken != model.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+                {
+                    return BadRequest("Invalid client request");
+                }
+
+                var newJwtToken = GenerateJwtToken(principal.Claims);
+                var newRefreshToken = GenerateRefreshToken();
+
+                user.RefreshToken = newRefreshToken;
+                await _userManager.UpdateAsync(user);
+
+                return new ObjectResult(new
+                {
+                    token = new JwtSecurityTokenHandler().WriteToken(newJwtToken),
+                    refreshToken = newRefreshToken
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error occurred while refreshing token");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error");
+            }
+        }
 
         /// <summary>
         /// Realiza o login de um dependente.
@@ -291,8 +314,6 @@ namespace FazaBoa_API.Controllers
         /// <param name="userId">ID do usuário</param>
         /// <returns>Retorna os detalhes do perfil ou uma mensagem de erro</returns>
         [HttpGet("profile/{userId}")]
-
-        // Métodos
         public async Task<IActionResult> GetUserProfile(string userId)
         {
             var requestingUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -357,6 +378,7 @@ namespace FazaBoa_API.Controllers
             });
         }
 
+        // Métodos
         private Response CreateResponse(string status, string message, List<string> errors = null)
 
         {
@@ -420,8 +442,6 @@ namespace FazaBoa_API.Controllers
 
             return principal;
         }
-
-
 
     }
 }

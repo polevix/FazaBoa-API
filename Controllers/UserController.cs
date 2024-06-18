@@ -12,7 +12,7 @@ using FluentValidation;
 using FluentValidation.Results;
 using Serilog;
 using System.Security.Cryptography;
-using System.IO;
+using FazaBoa_API.Services;
 
 namespace FazaBoa_API.Controllers
 {
@@ -25,13 +25,17 @@ namespace FazaBoa_API.Controllers
         private readonly IConfiguration _configuration;
         private readonly ApplicationDbContext _context;
         private readonly IValidator<Register> _registerValidator;
+        private readonly PhotoService _photoService;
+        private readonly ILogger<UserController> _logger;
 
-        public UserController(UserManager<ApplicationUser> userManager, IConfiguration configuration, ApplicationDbContext context, IValidator<Register> registerValidator)
+        public UserController(UserManager<ApplicationUser> userManager, IConfiguration configuration, ApplicationDbContext context, IValidator<Register> registerValidator, PhotoService photoService, ILogger<UserController> logger)
         {
             _userManager = userManager;
             _configuration = configuration;
             _context = context;
             _registerValidator = registerValidator;
+            _photoService = photoService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -281,6 +285,16 @@ namespace FazaBoa_API.Controllers
         [HttpPost("upload-photo")]
         public async Task<IActionResult> UploadProfilePhoto([FromForm] IFormFile photo)
         {
+            if (photo == null || photo.Length == 0)
+            {
+                return BadRequest(new { Message = "No file uploaded" });
+            }
+
+            if (!photo.ContentType.StartsWith("image/"))
+            {
+                return BadRequest(new { Message = "Invalid file type. Only image files are allowed" });
+            }
+
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
             {
@@ -295,17 +309,31 @@ namespace FazaBoa_API.Controllers
 
             var directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "profile-photos");
             Directory.CreateDirectory(directoryPath);
-            var filePath = Path.Combine(directoryPath, $"{userId}_{photo.FileName}");
+            var fileName = $"{userId}_{Guid.NewGuid()}{Path.GetExtension(photo.FileName)}";
+            var filePath = Path.Combine(directoryPath, fileName);
 
-            using (var stream = new FileStream(filePath, FileMode.Create))
+            try
             {
-                await photo.CopyToAsync(stream);
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await photo.CopyToAsync(stream);
+                }
+
+                user.ProfilePhotoUrl = $"/profile-photos/{fileName}";
+                var result = await _userManager.UpdateAsync(user);
+                if (!result.Succeeded)
+                {
+                    System.IO.File.Delete(filePath);
+                    return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Failed to update user profile photo." });
+                }
+
+                return Ok(new { Message = "Profile photo uploaded successfully", PhotoUrl = user.ProfilePhotoUrl });
             }
-
-            user.ProfilePhotoUrl = $"/profile-photos/{userId}_{photo.FileName}";
-            await _userManager.UpdateAsync(user);
-
-            return Ok(new { Message = "Profile photo uploaded successfully", PhotoUrl = user.ProfilePhotoUrl });
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error uploading profile photo for user {UserId}", userId);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Error uploading profile photo." });
+            }
         }
 
         /// <summary>
@@ -442,6 +470,7 @@ namespace FazaBoa_API.Controllers
 
             return principal;
         }
+
 
     }
 }

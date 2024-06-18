@@ -96,6 +96,10 @@ builder.Services.AddCors(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+//Configurando serviços
+builder.Services.AddScoped<PhotoService>();
+
+
 
 builder.Services.AddControllers();
 

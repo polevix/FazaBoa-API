@@ -111,14 +111,13 @@ namespace FazaBoa_API.Services
                         <img src='{logoUrl}' alt='FazaBoa Logo'>
                     </div>
                     <div class='content'>
-                        <h2>Redefinição de Senha</h2>
                         <p>Olá,</p>
                         <p>Você solicitou a redefinição da sua senha. Para redefinir sua senha, clique no botão abaixo:</p>
                         <p style='text-align: center;'>
                             <a href='{resetUrl}' class='button'>Redefinir Senha</a>
                         </p>
                         <p>Se você não solicitou essa alteração, por favor, ignore este e-mail. Sua senha permanecerá a mesma.</p>
-                        <p>Atenciosamente,<br>Equipe FazaBoa</p>
+                        <p>Atenciosamente,<br>Equipe Faz a Boa</p>
                     </div>
                     <div class='footer'>
                         <p>&copy; 2024 FazaBoa. Todos os direitos reservados.</p>

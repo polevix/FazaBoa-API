@@ -113,6 +113,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles(); // Certifique-se de que esta linha está presente para servir arquivos estáticos
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();

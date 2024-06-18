@@ -49,8 +49,7 @@ public class AccountController : ControllerBase
 
         if (user.Email != null)
         {
-            var emailMessage = _emailSender.GenerateForgotPasswordMessage(resetUrl);
-            await _emailSender.SendEmailAsync(user.Email, "Redefinição de Senha", emailMessage);
+            await _emailSender.SendEmailAsync(user.Email, "Redefinição de Senha", _emailSender.GenerateForgotPasswordMessage(resetUrl, HttpContext));
         }
 
         return Ok(new { Message = "Link de redefinição de senha enviado para o email" });

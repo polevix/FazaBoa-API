@@ -4,6 +4,7 @@ using System.Net.Mail;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Http;
 
 namespace FazaBoa_API.Services
 {
@@ -55,17 +56,77 @@ namespace FazaBoa_API.Services
             }
         }
 
-        public string GenerateForgotPasswordMessage(string resetUrl)
+        public string GenerateForgotPasswordMessage(string resetUrl, HttpContext httpContext)
         {
+            var logoUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}/images/logo.png";
+
             return $@"
-                <html>
-                <body>
-                    <h2>Redefinição de Senha</h2>
-                    <p>Você solicitou a redefinição de sua senha. Clique no link abaixo para redefinir sua senha:</p>
-                    <a href='{resetUrl}'>Redefinir Senha</a>
-                    <p>Se você não solicitou a redefinição de senha, ignore este e-mail.</p>
-                </body>
-                </html>";
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {{
+                        font-family: Arial, sans-serif;
+                        line-height: 1.6;
+                        color: #333;
+                    }}
+                    .container {{
+                        max-width: 600px;
+                        margin: 0 auto;
+                        padding: 20px;
+                        border: 1px solid #e0e0e0;
+                        border-radius: 8px;
+                        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                    }}
+                    .header {{
+                        text-align: center;
+                        margin-bottom: 20px;
+                    }}
+                    .header img {{
+                        max-height: 50px;
+                    }}
+                    .content {{
+                        margin-bottom: 20px;
+                    }}
+                    .button {{
+                        display: inline-block;
+                        padding: 10px 20px;
+                        margin: 20px 0;
+                        font-size: 16px;
+                        color: #fff;
+                        background-color: #007BFF;
+                        text-decoration: none;
+                        border-radius: 4px;
+                    }}
+                    .footer {{
+                        text-align: center;
+                        font-size: 12px;
+                        color: #777;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class='container'>
+                    <div class='header'>
+                        <img src='{logoUrl}' alt='FazaBoa Logo'>
+                    </div>
+                    <div class='content'>
+                        <h2>Redefinição de Senha</h2>
+                        <p>Olá,</p>
+                        <p>Você solicitou a redefinição da sua senha. Para redefinir sua senha, clique no botão abaixo:</p>
+                        <p style='text-align: center;'>
+                            <a href='{resetUrl}' class='button'>Redefinir Senha</a>
+                        </p>
+                        <p>Se você não solicitou essa alteração, por favor, ignore este e-mail. Sua senha permanecerá a mesma.</p>
+                        <p>Atenciosamente,<br>Equipe FazaBoa</p>
+                    </div>
+                    <div class='footer'>
+                        <p>&copy; 2024 FazaBoa. Todos os direitos reservados.</p>
+                        <p>Este é um e-mail automático, por favor, não responda.</p>
+                    </div>
+                </div>
+            </body>
+            </html>";
         }
     }
 }

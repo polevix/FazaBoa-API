@@ -337,15 +337,17 @@ namespace FazaBoa_API.Controllers
         }
 
         /// <summary>
-        /// Obtém os detalhes do perfil de um usuário.
+        /// Exclui a foto de perfil do usuário.
         /// </summary>
-        /// <param name="userId">ID do usuário</param>
-        /// <returns>Retorna os detalhes do perfil ou uma mensagem de erro</returns>
-        [HttpGet("profile/{userId}")]
-        public async Task<IActionResult> GetUserProfile(string userId)
+        /// <returns>Retorna uma mensagem de sucesso ou erro</returns>
+        [HttpDelete("delete-photo")]
+        public async Task<IActionResult> DeleteProfilePhoto()
         {
-            var requestingUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var requestingUser = await _userManager.FindByIdAsync(requestingUserId);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new { Message = "User not authorized" });
+            }
 
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
@@ -353,57 +355,109 @@ namespace FazaBoa_API.Controllers
                 return NotFound(new { Message = "User not found" });
             }
 
-            if (requestingUserId != userId && (!user.IsDependent || user.MasterUserId != requestingUserId))
+            if (string.IsNullOrEmpty(user.ProfilePhotoUrl))
             {
-                return Unauthorized(new { Message = "User not authorized to view this profile" });
+                return BadRequest(new { Message = "No profile photo to delete" });
             }
 
-            var createdChallenges = await _context.Challenges
-                .Where(c => c.CreatedById == userId)
-                .ToListAsync();
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", user.ProfilePhotoUrl.TrimStart('/'));
 
-            var completedChallenges = await _context.CompletedChallenges
-                .Include(cc => cc.Challenge)
-                .Where(cc => cc.UserId == userId && cc.IsValidated)
-                .ToListAsync();
-
-            var redeemedRewards = await _context.RewardTransactions
-                .Include(rt => rt.Reward)
-                .Where(rt => rt.UserId == userId)
-                .ToListAsync();
-
-            return Ok(new
+            if (System.IO.File.Exists(filePath))
             {
-                user.Id,
-                user.FullName,
-                user.Email,
-                user.ProfilePhotoUrl,
-                CreatedChallenges = createdChallenges.Select(c => new
+                try
                 {
-                    c.Id,
-                    c.Name,
-                    c.Description,
-                    c.CoinValue,
-                    c.StartDate,
-                    c.EndDate,
-                    c.IsDaily
-                }),
-                CompletedChallenges = completedChallenges.Select(cc => new
+                    System.IO.File.Delete(filePath);
+                    user.ProfilePhotoUrl = null;
+                    await _userManager.UpdateAsync(user);
+
+                    return Ok(new { Message = "Profile photo deleted successfully" });
+                }
+                catch (Exception ex)
                 {
-                    cc.Challenge.Id,
-                    cc.Challenge.Name,
-                    cc.Challenge.Description,
-                    cc.Challenge.CoinValue,
-                    cc.CompletedDate
-                }),
-                RedeemedRewards = redeemedRewards.Select(rt => new
+                    _logger.LogError(ex, "Error deleting profile photo for user {UserId}", userId);
+                    return StatusCode(500, new { Message = "Error deleting profile photo" });
+                }
+            }
+            else
+            {
+                return NotFound(new { Message = "Profile photo not found on server" });
+            }
+        }
+
+        /// <summary>
+        /// Obtém os detalhes do perfil de um usuário.
+        /// </summary>
+        /// <param name="userId">ID do usuário</param>
+        /// <returns>Retorna os detalhes do perfil ou uma mensagem de erro</returns>
+        [HttpGet("profile")]
+        public async Task<IActionResult> GetUserProfile()
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(userId))
                 {
-                    rt.Reward.Id,
-                    rt.Reward.Description,
-                    rt.Reward.RequiredCoins,
-                    rt.Timestamp
-                })
-            });
+                    return Unauthorized(new { Message = "User not authorized" });
+                }
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                {
+                    return NotFound(new { Message = "User not found" });
+                }
+
+                var createdChallenges = await _context.Challenges
+                    .Where(c => c.CreatedById == userId)
+                    .ToListAsync();
+
+                var completedChallenges = await _context.CompletedChallenges
+                    .Include(cc => cc.Challenge)
+                    .Where(cc => cc.UserId == userId && cc.IsValidated)
+                    .ToListAsync();
+
+                var redeemedRewards = await _context.RewardTransactions
+                    .Include(rt => rt.Reward)
+                    .Where(rt => rt.UserId == userId)
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    user.Id,
+                    user.FullName,
+                    user.Email,
+                    user.ProfilePhotoUrl,
+                    CreatedChallenges = createdChallenges.Select(c => new
+                    {
+                        c.Id,
+                        c.Name,
+                        c.Description,
+                        c.CoinValue,
+                        c.StartDate,
+                        c.EndDate,
+                        c.IsDaily
+                    }),
+                    CompletedChallenges = completedChallenges.Select(cc => new
+                    {
+                        cc.Challenge.Id,
+                        cc.Challenge.Name,
+                        cc.Challenge.Description,
+                        cc.Challenge.CoinValue,
+                        cc.CompletedDate
+                    }),
+                    RedeemedRewards = redeemedRewards.Select(rt => new
+                    {
+                        rt.Reward.Id,
+                        rt.Reward.Description,
+                        rt.Reward.RequiredCoins,
+                        rt.Timestamp
+                    })
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while getting user profile.");
+                return StatusCode(500, new { Message = "An error occurred while getting user profile" });
+            }
         }
 
         // Métodos

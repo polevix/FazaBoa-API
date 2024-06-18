@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace FazaBoa_API.Services
 {
@@ -16,7 +17,8 @@ namespace FazaBoa_API.Services
         /// Generates the forgot password message.
         /// </summary>
         /// <param name="resetUrl">The reset URL.</param>
+        /// <param name="httpContext">The HttpContext for generating the logo URL.</param>
         /// <returns>The HTML message string.</returns>
-        string GenerateForgotPasswordMessage(string resetUrl);
+        string GenerateForgotPasswordMessage(string resetUrl, HttpContext httpContext);
     }
 }

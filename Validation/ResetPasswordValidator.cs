@@ -8,19 +8,19 @@ namespace FazaBoa_API.Validation
         public ResetPasswordValidator()
         {
             RuleFor(x => x.Email)
-                .NotEmpty().WithMessage("Email is required")
-                .EmailAddress().WithMessage("A valid email is required");
+                .NotEmpty().WithMessage("O email é obrigatório")
+                .EmailAddress().WithMessage("Um email válido é obrigatório");
 
             RuleFor(x => x.Token)
-                .NotEmpty().WithMessage("Token is required");
+                .NotEmpty().WithMessage("O token é obrigatório");
 
             RuleFor(x => x.NewPassword)
-                .NotEmpty().WithMessage("New Password is required")
-                .MinimumLength(8).WithMessage("Password must be at least 8 characters long")
-                .Matches(@"[A-Z]").WithMessage("Password must contain at least one uppercase letter")
-                .Matches(@"[a-z]").WithMessage("Password must contain at least one lowercase letter")
-                .Matches(@"\d").WithMessage("Password must contain at least one digit")
-                .Matches(@"[!@#$%^&*(),.?\"":{ }|<>]").WithMessage("Password must contain at least one special character");
+                .NotEmpty().WithMessage("A nova senha é obrigatória")
+                .MinimumLength(8).WithMessage("A senha deve ter pelo menos 8 caracteres")
+                .Matches(@"[A-Z]").WithMessage("A senha deve conter pelo menos uma letra maiúscula")
+                .Matches(@"[a-z]").WithMessage("A senha deve conter pelo menos uma letra minúscula")
+                .Matches(@"\d").WithMessage("A senha deve conter pelo menos um dígito")
+                .Matches(@"[!@#$%^&*(),.?\"":{ }|<>]").WithMessage("A senha deve conter pelo menos um caractere especial");
         }
     }
 }

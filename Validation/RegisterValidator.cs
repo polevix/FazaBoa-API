@@ -7,20 +7,21 @@ namespace FazaBoa_API.Validation
     {
         public RegisterValidator()
         {
-            RuleFor(x => x.FullName).NotEmpty().WithMessage("Full name is required");
+            RuleFor(x => x.FullName).NotEmpty().WithMessage("O nome completo é obrigatório");
             RuleFor(x => x.Email)
-                .NotEmpty().WithMessage("Email is required")
-                .EmailAddress().WithMessage("A valid email is required");
+                .NotEmpty().WithMessage("O email é obrigatório")
+                .EmailAddress().WithMessage("Um email válido é obrigatório");
             RuleFor(x => x.Password)
-                .NotEmpty().WithMessage("Password is required")
-                .MinimumLength(8).WithMessage("Password must be at least 8 characters long")
-                .Matches(@"[A-Z]").WithMessage("Password must contain at least one uppercase letter")
-                .Matches(@"[a-z]").WithMessage("Password must contain at least one lowercase letter")
-                .Matches(@"\d").WithMessage("Password must contain at least um caractere especial.");
+                .NotEmpty().WithMessage("A senha é obrigatória")
+                .MinimumLength(8).WithMessage("A senha deve ter pelo menos 8 caracteres")
+                .Matches(@"[A-Z]").WithMessage("A senha deve conter pelo menos uma letra maiúscula")
+                .Matches(@"[a-z]").WithMessage("A senha deve conter pelo menos uma letra minúscula")
+                .Matches(@"\d").WithMessage("A senha deve conter pelo menos um dígito")
+                .Matches(@"[^\da-zA-Z]").WithMessage("A senha deve conter pelo menos um caractere especial.");
 
             RuleFor(x => x.MasterUserId)
                 .NotEmpty().When(x => x.IsDependent)
-                .WithMessage("Master User ID is required for dependents");
+                .WithMessage("O ID do Usuário Mestre é obrigatório para dependentes");
         }
     }
 }

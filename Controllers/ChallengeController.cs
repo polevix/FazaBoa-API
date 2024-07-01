@@ -27,13 +27,13 @@ public class ChallengeController : ControllerBase
     {
         if (!ModelState.IsValid || string.IsNullOrEmpty(challenge.Name) || challenge.GroupId <= 0)
         {
-            return BadRequest(new { Message = "Invalid challenge data" });
+            return BadRequest(new { Message = "Dados do desafio inválidos" });
         }
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userId == null)
         {
-            return Unauthorized(new { Message = "User not authorized" });
+            return Unauthorized(new { Message = "Usuário não autorizado" });
         }
 
         challenge.CreatedById = userId;
@@ -48,11 +48,12 @@ public class ChallengeController : ControllerBase
         catch
         {
             await transaction.RollbackAsync();
-            return StatusCode(500, new { Message = "Error while creating challenge" });
+            return StatusCode(500, new { Message = "Erro ao criar desafio" });
         }
 
         return Ok(challenge);
     }
+
 
     /// <summary>
     /// Obtém os detalhes de um desafio.
@@ -68,7 +69,7 @@ public class ChallengeController : ControllerBase
 
         if (challenge == null)
         {
-            return NotFound(new { Message = "Challenge not found" });
+            return NotFound(new { Message = "Desafio não encontrado" });
         }
 
         return Ok(new
@@ -142,7 +143,7 @@ public class ChallengeController : ControllerBase
         var challenge = await _context.Challenges.Include(c => c.AssignedUsers).FirstOrDefaultAsync(c => c.Id == id);
         if (challenge == null)
         {
-            return NotFound(new { Message = "Challenge not found" });
+            return NotFound(new { Message = "Desafio não encontrado" });
         }
 
         var users = await _context.Users.Where(u => userIds.Contains(u.Id)).ToListAsync();
@@ -155,7 +156,8 @@ public class ChallengeController : ControllerBase
         }
 
         await _context.SaveChangesAsync();
-        return Ok(new { Message = "Users assigned to challenge successfully" });
+        return Ok(new { Message = "Usuários atribuídos ao desafio com sucesso" });
+
     }
 
     /// <summary>
@@ -170,13 +172,13 @@ public class ChallengeController : ControllerBase
         var challenge = await _context.Challenges.FindAsync(id);
         if (challenge == null)
         {
-            return NotFound(new { Message = "Challenge not found" });
+            return NotFound(new { Message = "Desafio não encontrado" });
         }
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (challenge.CreatedById != userId)
         {
-            return Unauthorized(new { Message = "User not authorized to update this challenge" });
+            return Unauthorized(new { Message = "Usuário não autorizado a atualizar este desafio" });
         }
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -195,11 +197,12 @@ public class ChallengeController : ControllerBase
         catch
         {
             await transaction.RollbackAsync();
-            return StatusCode(500, new { Message = "Error while updating challenge" });
+            return StatusCode(500, new { Message = "Erro ao atualizar desafio" });
         }
 
         return Ok(challenge);
     }
+
 
     /// <summary>
     /// Exclui um desafio.
@@ -212,13 +215,13 @@ public class ChallengeController : ControllerBase
         var challenge = await _context.Challenges.FindAsync(id);
         if (challenge == null)
         {
-            return NotFound(new { Message = "Challenge not found" });
+            return NotFound(new { Message = "Desafio não encontrado" });
         }
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (challenge.CreatedById != userId)
         {
-            return Unauthorized(new { Message = "User not authorized to delete this challenge" });
+            return Unauthorized(new { Message = "Usuário não autorizado a excluir este desafio" });
         }
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -231,11 +234,12 @@ public class ChallengeController : ControllerBase
         catch
         {
             await transaction.RollbackAsync();
-            return StatusCode(500, new { Message = "Error while deleting challenge" });
+            return StatusCode(500, new { Message = "Erro ao excluir desafio" });
         }
 
-        return Ok(new { Message = "Challenge deleted successfully" });
+        return Ok(new { Message = "Desafio excluído com sucesso" });
     }
+
 
     /// <summary>
     /// Marca um desafio como concluído.
@@ -249,18 +253,18 @@ public class ChallengeController : ControllerBase
         var challenge = await _context.Challenges.Include(c => c.AssignedUsers).FirstOrDefaultAsync(c => c.Id == id);
         if (challenge == null)
         {
-            return NotFound(new { Message = "Challenge not found" });
+            return NotFound(new { Message = "Desafio não encontrado" });
         }
 
         var user = await _context.Users.FindAsync(userId);
         if (user == null || (!challenge.AssignedUsers.Contains(user) && user.MasterUserId != challenge.CreatedById))
         {
-            return Unauthorized(new { Message = "User not authorized to complete this challenge" });
+            return Unauthorized(new { Message = "Usuário não autorizado a completar este desafio" });
         }
 
         if (_context.CompletedChallenges.Any(cc => cc.ChallengeId == id && cc.UserId == userId))
         {
-            return BadRequest(new { Message = "Challenge already completed by user" });
+            return BadRequest(new { Message = "Desafio já completado pelo usuário" });
         }
 
         var completedChallenge = new CompletedChallenge
@@ -281,11 +285,12 @@ public class ChallengeController : ControllerBase
         catch
         {
             await transaction.RollbackAsync();
-            return StatusCode(500, new { Message = "Error while marking challenge as completed" });
+            return StatusCode(500, new { Message = "Erro ao marcar desafio como completado" });
         }
 
-        return Ok(new { Message = "Challenge marked as completed successfully" });
+        return Ok(new { Message = "Desafio marcado como completado com sucesso" });
     }
+
 
     /// <summary>
     /// Valida a conclusão de um desafio.
@@ -299,7 +304,7 @@ public class ChallengeController : ControllerBase
         var challenge = await _context.Challenges.FirstOrDefaultAsync(c => c.Id == id);
         if (challenge == null)
         {
-            return NotFound(new { Message = "Challenge not found" });
+            return NotFound(new { Message = "Desafio não encontrado" });
         }
 
         var completedChallenge = await _context.CompletedChallenges
@@ -307,13 +312,13 @@ public class ChallengeController : ControllerBase
 
         if (completedChallenge == null)
         {
-            return NotFound(new { Message = "No completed challenge found for this user" });
+            return NotFound(new { Message = "Nenhum desafio completado encontrado para este usuário" });
         }
 
         var creatorId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (challenge.CreatedById != creatorId)
         {
-            return Unauthorized(new { Message = "User not authorized to validate this challenge" });
+            return Unauthorized(new { Message = "Usuário não autorizado a validar este desafio" });
         }
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -329,14 +334,15 @@ public class ChallengeController : ControllerBase
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
-            return Ok(new { Message = "Challenge validated successfully", CoinsAwarded = challenge.CoinValue });
+            return Ok(new { Message = "Desafio validado com sucesso", CoinsAwarded = challenge.CoinValue });
         }
         catch
         {
             await transaction.RollbackAsync();
-            return StatusCode(500, new { Message = "Error while validating challenge" });
+            return StatusCode(500, new { Message = "Erro ao validar o desafio" });
         }
     }
+
 
     /// <summary>
     /// Adiciona moedas ao saldo do usuário.
@@ -362,7 +368,7 @@ public class ChallengeController : ControllerBase
                 UserId = userId,
                 GroupId = groupId,
                 Amount = coinsToAdd,
-                Description = "Completed a challenge",
+                Description = "Desafio Concluído",
                 Timestamp = DateTime.UtcNow
             });
 

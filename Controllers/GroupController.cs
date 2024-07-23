@@ -78,7 +78,7 @@ public class GroupController : ControllerBase
 
         if (group == null)
         {
-            return NotFound(new { Message = "Group not found" });
+            return NotFound(new { Message = "Grupo não encontrado" });
         }
 
         return Ok(new
@@ -118,11 +118,11 @@ public class GroupController : ControllerBase
     {
         var group = await _context.Groups.Include(g => g.Members).FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)
-            return NotFound(new { Message = "Group not found" });
+            return NotFound(new { Message = "Grupo não encontrado" });
 
         var user = await _context.Users.FindAsync(userId);
         if (user == null)
-            return NotFound(new { Message = "User not found" });
+            return NotFound(new { Message = "Usuário não encontrado" });
 
         if (!group.Members.Contains(user))
         {
@@ -130,7 +130,7 @@ public class GroupController : ControllerBase
             await _context.SaveChangesAsync();
         }
 
-        return Ok(new { Message = "Member added successfully" });
+        return Ok(new { Message = "Membro adicionado com sucesso" });
     }
 
     /// <summary>
@@ -144,15 +144,15 @@ public class GroupController : ControllerBase
     {
         var group = await _context.Groups.Include(g => g.Members).FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)
-            return NotFound(new { Message = "Group not found" });
+            return NotFound(new { Message = "Grupo não encontrado" });
 
         var user = group.Members.FirstOrDefault(u => u.Id == userId);
         if (user == null)
-            return NotFound(new { Message = "Member not found in group" });
+            return NotFound(new { Message = "Membro não encontrado no grupo" });
 
         group.Members.Remove(user);
         await _context.SaveChangesAsync();
-        return Ok(new { Message = "Member removed successfully" });
+        return Ok(new { Message = "Membro removido com sucesso" });
     }
 
     /// <summary>
@@ -166,25 +166,25 @@ public class GroupController : ControllerBase
     {
         var group = await _context.Groups.Include(g => g.Members).FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)
-            return NotFound(new { Message = "Group not found" });
+            return NotFound(new { Message = "Grupo não encontrado" });
 
         var user = group.Members.FirstOrDefault(u => u.Id == userId);
         if (user == null)
-            return NotFound(new { Message = "Member not found in group" });
+            return NotFound(new { Message = "Membro não encontrado no grupo" });
 
         var masterUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(masterUserId))
-            return Unauthorized(new { Message = "Master user not found" });
+            return Unauthorized(new { Message = "Usuário mestre não encontrado" });
 
         var applicationUser = await _context.Users.FindAsync(userId);
         if (applicationUser == null)
-            return NotFound(new { Message = "User not found" });
+            return NotFound(new { Message = "Usuário não encontrado" });
 
         applicationUser.IsDependent = true;
         applicationUser.MasterUserId = masterUserId;
         await _context.SaveChangesAsync();
 
-        return Ok(new { Message = "Member marked as dependent successfully" });
+        return Ok(new { Message = "Membro marcado como dependente com sucesso" });
     }
 
     /// <summary>
@@ -198,16 +198,16 @@ public class GroupController : ControllerBase
     {
         var group = await _context.Groups.Include(g => g.Members).FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)
-            return NotFound(new { Message = "Group not found" });
+            return NotFound(new { Message = "Grupo não encontrado" });
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var masterUser = await _context.Users.FindAsync(userId);
         if (masterUser == null || group.CreatedById != userId)
-            return Unauthorized(new { Message = "User not authorized to add dependents" });
+            return Unauthorized(new { Message = "Usuário não autorizado a adicionar dependentes" });
 
         var dependentUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == dependentEmail);
         if (dependentUser == null)
-            return NotFound(new { Message = "User not found" });
+            return NotFound(new { Message = "Usuário não encontrado" });
 
         if (!group.Members.Contains(dependentUser))
             group.Members.Add(dependentUser);
@@ -216,7 +216,7 @@ public class GroupController : ControllerBase
         dependentUser.MasterUserId = userId;
 
         await _context.SaveChangesAsync();
-        return Ok(new { Message = "Dependent added successfully" });
+        return Ok(new { Message = "Dependente adicionado com sucesso" });
     }
 
     /// <summary>
@@ -229,11 +229,11 @@ public class GroupController : ControllerBase
     {
         var group = await _context.Groups.Include(g => g.Members).FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)
-            return NotFound(new { Message = "Group not found" });
+            return NotFound(new { Message = "Grupo não encontrado" });
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (group.CreatedById != userId)
-            return Unauthorized(new { Message = "User not authorized to view dependents" });
+            return Unauthorized(new { Message = "Usuário não autorizado a visualizar dependentes" });
 
         var dependents = group.Members
             .Where(m => m.IsDependent)
@@ -255,29 +255,29 @@ public class GroupController : ControllerBase
         var group = await _context.Groups.Include(g => g.Members).FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)
         {
-            return NotFound(new { Message = "Group not found" });
+            return NotFound(new { Message = "Grupo não encontrado" });
         }
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (group.CreatedById != userId)
         {
-            return Unauthorized(new { Message = "User not authorized to invite members" });
+            return Unauthorized(new { Message = "Usuário não autorizado a convidar membros" });
         }
 
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
         if (user == null)
         {
-            return NotFound(new { Message = "User with the provided email not found" });
+            return NotFound(new { Message = "Usuário com o email fornecido não encontrado" });
         }
 
         if (group.Members.Any(m => m.Id == user.Id))
         {
-            return BadRequest(new { Message = "User is already a member of the group" });
+            return BadRequest(new { Message = "Usuário já é membro do grupo" });
         }
 
         group.Members.Add(user);
         await _context.SaveChangesAsync();
-        return Ok(new { Message = "User invited successfully" });
+        return Ok(new { Message = "Usuário convidado com sucesso" });
     }
 
     /// <summary>
@@ -294,17 +294,17 @@ public class GroupController : ControllerBase
 
         if (group == null || user == null)
         {
-            return NotFound(new { Message = "Group or User not found" });
+            return NotFound(new { Message = "Grupo ou usuário não encontrado" });
         }
 
         if (group.Members.Any(m => m.Id == user.Id))
         {
-            return BadRequest(new { Message = "User is already a member of the group" });
+            return BadRequest(new { Message = "Usuário já é membro do grupo" });
         }
 
         group.Members.Add(user);
         await _context.SaveChangesAsync();
-        return Ok(new { Message = "Invite accepted" });
+        return Ok(new { Message = "Convite aceito" });
     }
 
     /// <summary>
@@ -319,13 +319,13 @@ public class GroupController : ControllerBase
         var group = await _context.Groups.FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)
         {
-            return NotFound(new { Message = "Group not found" });
+            return NotFound(new { Message = "Grupo não encontrado" });
         }
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (group.CreatedById != userId)
         {
-            return Unauthorized(new { Message = "User not authorized to edit this group" });
+            return Unauthorized(new { Message = "Usuário não autorizado a editar este grupo" });
         }
 
         var existingGroup = await _context.Groups
@@ -333,14 +333,14 @@ public class GroupController : ControllerBase
 
         if (existingGroup != null)
         {
-            return BadRequest(new { Message = "A group with the same name already exists" });
+            return BadRequest(new { Message = "Um grupo com o mesmo nome já existe" });
         }
 
         group.Name = updatedGroup.Name ?? group.Name;
         group.PhotoUrl = updatedGroup.PhotoUrl ?? group.PhotoUrl;
 
         await _context.SaveChangesAsync();
-        return Ok(new { Message = "Group updated successfully", Group = group });
+        return Ok(new { Message = "Grupo atualizado com sucesso", Group = group });
     }
 
     /// <summary>
@@ -354,22 +354,22 @@ public class GroupController : ControllerBase
     {
         var group = await _context.Groups.Include(g => g.Members).FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)
-            return NotFound(new { Message = "Group not found" });
+            return NotFound(new { Message = "Grupo não encontrado" });
 
         var masterUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (group.CreatedById != masterUserId)
-            return Unauthorized(new { Message = "User not authorized to remove dependents" });
+            return Unauthorized(new { Message = "Usuário não autorizado a remover dependentes" });
 
         var dependentUser = group.Members.FirstOrDefault(u => u.Id == userId && u.IsDependent);
         if (dependentUser == null)
-            return NotFound(new { Message = "Dependent not found in group" });
+            return NotFound(new { Message = "Dependente não encontrado no grupo" });
 
         group.Members.Remove(dependentUser);
         dependentUser.IsDependent = false;
         dependentUser.MasterUserId = null;
 
         await _context.SaveChangesAsync();
-        return Ok(new { Message = "Dependent removed successfully" });
+        return Ok(new { Message = "Dependente removido com sucesso" });
     }
 
     /// <summary>
@@ -383,18 +383,18 @@ public class GroupController : ControllerBase
         var group = await _context.Groups.FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)
         {
-            return NotFound(new { Message = "Group not found" });
+            return NotFound(new { Message = "Grupo não encontrado" });
         }
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (group.CreatedById != userId)
         {
-            return Unauthorized(new { Message = "User not authorized to delete this group" });
+            return Unauthorized(new { Message = "Usuário não autorizado a excluir este grupo" });
         }
 
         _context.Groups.Remove(group);
         await _context.SaveChangesAsync();
 
-        return Ok(new { Message = "Group deleted successfully" });
+        return Ok(new { Message = "Grupo excluído com sucesso" });
     }
 }

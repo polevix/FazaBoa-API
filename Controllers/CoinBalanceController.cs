@@ -28,7 +28,7 @@ public class CoinBalanceController : ControllerBase
         var balance = await _context.CoinBalances.FirstOrDefaultAsync(b => b.UserId == userId && b.GroupId == groupId);
         if (balance == null)
         {
-            return NotFound(new { Message = "Balance not found" });
+            return NotFound(new { Message = "Saldo não encontrado" });
         }
 
         return Ok(balance);
@@ -46,7 +46,7 @@ public class CoinBalanceController : ControllerBase
     {
         if (amount < 0)
         {
-            return BadRequest(new { Message = "Amount must be positive" });
+            return BadRequest(new { Message = "A quantidade deve ser positiva" });
         }
 
         var balance = await _context.CoinBalances.FirstOrDefaultAsync(b => b.UserId == userId && b.GroupId == groupId);
@@ -58,7 +58,7 @@ public class CoinBalanceController : ControllerBase
 
         balance.Balance += amount;
         await _context.SaveChangesAsync();
-        return Ok(new { Message = "Balance updated", Balance = balance.Balance });
+        return Ok(new { Message = "Saldo atualizado", Balance = balance.Balance });
     }
 
     /// <summary>
@@ -73,22 +73,22 @@ public class CoinBalanceController : ControllerBase
     {
         if (amount < 0)
         {
-            return BadRequest(new { Message = "Amount must be positive" });
+            return BadRequest(new { Message = "A quantidade deve ser positiva" });
         }
 
         var balance = await _context.CoinBalances.FirstOrDefaultAsync(b => b.UserId == userId && b.GroupId == groupId);
         if (balance == null)
         {
-            return NotFound(new { Message = "Balance not found" });
+            return NotFound(new { Message = "Saldo não encontrado" });
         }
 
         if (balance.Balance < amount)
         {
-            return BadRequest(new { Message = "Insufficient balance" });
+            return BadRequest(new { Message = "Saldo insuficiente" });
         }
 
         balance.Balance -= amount;
         await _context.SaveChangesAsync();
-        return Ok(new { Message = "Balance updated", Balance = balance.Balance });
+        return Ok(new { Message = "Saldo atualizado", Balance = balance.Balance });
     }
 }

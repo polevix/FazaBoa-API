@@ -35,7 +35,7 @@ public class RewardController : ControllerBase
 
         if (group == null || group.CreatedById != userId)
         {
-            return Unauthorized(new { Message = "User not authorized to create rewards for this group" });
+            return Unauthorized(new { Message = "Usuário não autorizado a criar recompensas para este grupo" });
         }
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -48,7 +48,7 @@ public class RewardController : ControllerBase
         catch
         {
             await transaction.RollbackAsync();
-            return StatusCode(500, new { Message = "Error while creating reward" });
+            return StatusCode(500, new { Message = "Erro ao criar recompensa" });
         }
 
         return Ok(reward);
@@ -82,7 +82,7 @@ public class RewardController : ControllerBase
         var reward = await _context.Rewards.FindAsync(id);
         if (reward == null)
         {
-            return NotFound(new { Message = "Reward not found" });
+            return NotFound(new { Message = "Recompensa não encontrada" });
         }
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -90,7 +90,7 @@ public class RewardController : ControllerBase
 
         if (group == null || group.CreatedById != userId)
         {
-            return Unauthorized(new { Message = "User not authorized to delete rewards for this group" });
+            return Unauthorized(new { Message = "Usuário não autorizado a excluir recompensas para este grupo" });
         }
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -103,10 +103,10 @@ public class RewardController : ControllerBase
         catch
         {
             await transaction.RollbackAsync();
-            return StatusCode(500, new { Message = "Error while deleting reward" });
+            return StatusCode(500, new { Message = "Erro ao excluir recompensa" });
         }
 
-        return Ok(new { Message = "Reward deleted successfully" });
+        return Ok(new { Message = "Recompensa excluída com sucesso" });
     }
 
     /// <summary>
@@ -126,10 +126,10 @@ public class RewardController : ControllerBase
             var balance = await _context.CoinBalances.FirstOrDefaultAsync(b => b.UserId == userId && b.GroupId == reward.GroupId);
 
             if (reward == null || user == null || balance == null || !user.Groups.Any(g => g.Id == reward.GroupId))
-                return NotFound(new { Message = "Reward, User, or Balance not found, or User not part of the group" });
+                return NotFound(new { Message = "Recompensa, usuário ou saldo não encontrados, ou usuário não faz parte do grupo" });
 
             if (balance.Balance < reward.RequiredCoins)
-                return BadRequest(new { Message = "Not enough coins" });
+                return BadRequest(new { Message = "Moedas insuficientes" });
 
             balance.Balance -= reward.RequiredCoins;
             _context.RewardTransactions.Add(new RewardTransaction
@@ -144,19 +144,19 @@ public class RewardController : ControllerBase
                 UserId = userId,
                 GroupId = reward.GroupId,
                 Amount = -reward.RequiredCoins,
-                Description = $"Redeemed reward: {reward.Description}",
+                Description = $"Recompensa resgatada: {reward.Description}",
                 Timestamp = DateTime.UtcNow
             });
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
-            return Ok(new { Message = "Reward redeemed successfully", NewBalance = balance.Balance });
+            return Ok(new { Message = "Recompensa resgatada com sucesso", NewBalance = balance.Balance });
         }
         catch
         {
             await transaction.RollbackAsync();
-            return StatusCode(500, new { Message = "Internal Server Error" });
+            return StatusCode(500, new { Message = "Erro interno do servidor" });
         }
     }
 
@@ -176,7 +176,7 @@ public class RewardController : ControllerBase
 
         if (rewards == null || !rewards.Any())
         {
-            return NotFound(new { Message = "No rewards redeemed by user in this group" });
+            return NotFound(new { Message = "Nenhuma recompensa resgatada pelo usuário neste grupo" });
         }
 
         return Ok(rewards.Select(rt => new

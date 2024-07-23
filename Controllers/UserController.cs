@@ -55,7 +55,7 @@ namespace FazaBoa_API.Controllers
 
             if (await _userManager.FindByEmailAsync(model.Email) != null)
             {
-                return Conflict(CreateResponse("Error", "User already exists", new List<string> { "The provided email is already registered." }));
+                return Conflict(CreateResponse("Error", "User already exists", new List<string> { "O email fornecido já está registrado." }));
             }
 
             try
@@ -75,7 +75,7 @@ namespace FazaBoa_API.Controllers
                 if (!result.Succeeded)
                 {
                     Log.Error("Failed to create user: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
-                    return StatusCode(StatusCodes.Status500InternalServerError, CreateResponse("Error", "User creation failed! Please check user details and try again.", result.Errors.Select(e => e.Description).ToList()));
+                    return StatusCode(StatusCodes.Status500InternalServerError, CreateResponse("Error", "Falha ao criar usuário! Verifique os detalhes do usuário e tente novamente.", result.Errors.Select(e => e.Description).ToList()));
                 }
 
                 var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
@@ -83,12 +83,12 @@ namespace FazaBoa_API.Controllers
 
                 Log.Information("Confirmation Link: {Link}", confirmationLink);
 
-                return Ok(CreateResponse("Success", "User created successfully!"));
+                return Ok(CreateResponse("Success", "Usuário criado com sucesso!"));
             }
             catch (Exception ex)
             {
                 Log.Error(ex, "Exception occurred while creating user");
-                return StatusCode(StatusCodes.Status500InternalServerError, CreateResponse("Error", "Internal Server Error", new List<string> { ex.Message }));
+                return StatusCode(StatusCodes.Status500InternalServerError, CreateResponse("Error", "Erro interno do servidor", new List<string> { ex.Message }));
             }
         }
 
@@ -105,21 +105,21 @@ namespace FazaBoa_API.Controllers
             {
                 if (string.IsNullOrEmpty(model.Email))
                 {
-                    return BadRequest(new { Message = "Email is required" });
+                    return BadRequest(new { Message = "Email é obrigatório" });
                 }
 
                 var user = await _userManager.FindByEmailAsync(model.Email);
                 if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
                 {
                     var authClaims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.Id),
-                new Claim(ClaimTypes.Name, user.UserName),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            };
+                    {
+                        new Claim(ClaimTypes.NameIdentifier, user.Id),
+                        new Claim(ClaimTypes.Name, user.UserName),
+                        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                    };
 
-                    // Generate JWT
-                    var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? throw new InvalidOperationException("JWT Key is not set in environment variables");
+                    // Gerar JWT
+                    var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? throw new InvalidOperationException("Chave JWT não está definida nas variáveis de ambiente");
                     var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
                     var token = new JwtSecurityToken(
@@ -130,7 +130,7 @@ namespace FazaBoa_API.Controllers
                         signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
                     );
 
-                    // Generate Refresh Token
+                    // Gerar Refresh Token
                     var refreshToken = GenerateRefreshToken();
                     user.RefreshToken = refreshToken;
                     user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
@@ -144,15 +144,15 @@ namespace FazaBoa_API.Controllers
                         refreshToken = refreshToken
                     });
                 }
-                return Unauthorized(new { Message = "Invalid credentials" });
+                return Unauthorized(new { Message = "Credenciais inválidas" });
             }
             catch (Exception ex)
             {
                 // Log the exception
-                Log.Error(ex, "Error occurred during login");
+                Log.Error(ex, "Erro ocorreu durante o login");
 
                 // Return a generic error message
-                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An error occurred while processing your request" });
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Ocorreu um erro ao processar sua solicitação" });
             }
         }
 
@@ -168,13 +168,13 @@ namespace FazaBoa_API.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
             {
-                return Unauthorized(new { Message = "User not found" });
+                return Unauthorized(new { Message = "Usuário não encontrado" });
             }
 
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
-                return Unauthorized(new { Message = "Invalid user" });
+                return Unauthorized(new { Message = "Usuário inválido" });
             }
 
             // Limpa o refresh token do usuário para prevenir novas autenticações usando o mesmo
@@ -184,23 +184,23 @@ namespace FazaBoa_API.Controllers
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
             {
-                return BadRequest(new { Message = "Failed to logout user." });
+                return BadRequest(new { Message = "Falha ao deslogar o usuário." });
             }
 
-            return Ok(new { Message = "Logged out successfully" });
+            return Ok(new { Message = "Deslogado com sucesso" });
         }
 
         /// <summary>
-        /// Realiza a atualização to token.
+        /// Realiza a atualização do token.
         /// </summary>
-        /// <returns>Retorna o token com o token atualizado</returns>
+        /// <returns>Retorna o token atualizado</returns>
         [HttpPost("refresh-token")]
         [AllowAnonymous]
         public async Task<IActionResult> RefreshToken([FromBody] TokenApi model)
         {
             if (model == null || string.IsNullOrEmpty(model.Token) || string.IsNullOrEmpty(model.RefreshToken))
             {
-                return BadRequest("Invalid client request");
+                return BadRequest("Solicitação inválida do cliente");
             }
 
             try
@@ -211,7 +211,7 @@ namespace FazaBoa_API.Controllers
                 var user = await _userManager.FindByNameAsync(username);
                 if (user == null || user.RefreshToken != model.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
                 {
-                    return BadRequest("Invalid client request");
+                    return BadRequest("Solicitação inválida do cliente");
                 }
 
                 var newJwtToken = GenerateJwtToken(principal.Claims);
@@ -228,8 +228,8 @@ namespace FazaBoa_API.Controllers
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error occurred while refreshing token");
-                return StatusCode(StatusCodes.Status500InternalServerError, "Internal server error");
+                Log.Error(ex, "Erro ocorreu durante a atualização do token");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Erro interno do servidor");
             }
         }
 
@@ -245,20 +245,20 @@ namespace FazaBoa_API.Controllers
             var masterUser = await _userManager.FindByEmailAsync(model.MasterUserEmail);
             if (masterUser == null || !await _userManager.CheckPasswordAsync(masterUser, model.MasterUserPassword))
             {
-                return Unauthorized(new { Message = "Invalid master user credentials" });
+                return Unauthorized(new { Message = "Credenciais inválidas do usuário mestre" });
             }
 
             var dependentUser = await _userManager.FindByEmailAsync(model.DependentEmail);
             if (dependentUser == null || !dependentUser.IsDependent || dependentUser.MasterUserId != masterUser.Id)
             {
-                return Unauthorized(new { Message = "Invalid dependent credentials" });
+                return Unauthorized(new { Message = "Credenciais inválidas do dependente" });
             }
 
             var authClaims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, dependentUser.UserName),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            };
+    {
+        new Claim(ClaimTypes.Name, dependentUser.UserName),
+        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+    };
 
             var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
 
@@ -287,24 +287,24 @@ namespace FazaBoa_API.Controllers
         {
             if (photo == null || photo.Length == 0)
             {
-                return BadRequest(new { Message = "No file uploaded" });
+                return BadRequest(new { Message = "Nenhum arquivo carregado" });
             }
 
             if (!photo.ContentType.StartsWith("image/"))
             {
-                return BadRequest(new { Message = "Invalid file type. Only image files are allowed" });
+                return BadRequest(new { Message = "Tipo de arquivo inválido. Apenas arquivos de imagem são permitidos" });
             }
 
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
             {
-                return Unauthorized(new { Message = "User not authorized" });
+                return Unauthorized(new { Message = "Usuário não autorizado" });
             }
 
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
-                return NotFound(new { Message = "User not found" });
+                return NotFound(new { Message = "Usuário não encontrado" });
             }
 
             var directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "profile-photos");
@@ -324,15 +324,15 @@ namespace FazaBoa_API.Controllers
                 if (!result.Succeeded)
                 {
                     System.IO.File.Delete(filePath);
-                    return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Failed to update user profile photo." });
+                    return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Falha ao atualizar a foto do perfil do usuário." });
                 }
 
-                return Ok(new { Message = "Profile photo uploaded successfully", PhotoUrl = user.ProfilePhotoUrl });
+                return Ok(new { Message = "Foto do perfil carregada com sucesso", PhotoUrl = user.ProfilePhotoUrl });
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error uploading profile photo for user {UserId}", userId);
-                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Error uploading profile photo." });
+                Log.Error(ex, "Erro ao carregar a foto do perfil para o usuário {UserId}", userId);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Erro ao carregar a foto do perfil." });
             }
         }
 
@@ -346,18 +346,18 @@ namespace FazaBoa_API.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
             {
-                return Unauthorized(new { Message = "User not authorized" });
+                return Unauthorized(new { Message = "Usuário não autorizado" });
             }
 
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
-                return NotFound(new { Message = "User not found" });
+                return NotFound(new { Message = "Usuário não encontrado" });
             }
 
             if (string.IsNullOrEmpty(user.ProfilePhotoUrl))
             {
-                return BadRequest(new { Message = "No profile photo to delete" });
+                return BadRequest(new { Message = "Nenhuma foto de perfil para excluir" });
             }
 
             var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", user.ProfilePhotoUrl.TrimStart('/'));
@@ -370,19 +370,20 @@ namespace FazaBoa_API.Controllers
                     user.ProfilePhotoUrl = null;
                     await _userManager.UpdateAsync(user);
 
-                    return Ok(new { Message = "Profile photo deleted successfully" });
+                    return Ok(new { Message = "Foto do perfil excluída com sucesso" });
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error deleting profile photo for user {UserId}", userId);
-                    return StatusCode(500, new { Message = "Error deleting profile photo" });
+                    _logger.LogError(ex, "Erro ao excluir a foto do perfil para o usuário {UserId}", userId);
+                    return StatusCode(500, new { Message = "Erro ao excluir a foto do perfil" });
                 }
             }
             else
             {
-                return NotFound(new { Message = "Profile photo not found on server" });
+                return NotFound(new { Message = "Foto de perfil não encontrada no servidor" });
             }
         }
+
 
         /// <summary>
         /// Obtém os detalhes do perfil de um usuário.
@@ -397,13 +398,13 @@ namespace FazaBoa_API.Controllers
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (string.IsNullOrEmpty(userId))
                 {
-                    return Unauthorized(new { Message = "User not authorized" });
+                    return Unauthorized(new { Message = "Usuário não autorizado" });
                 }
 
                 var user = await _userManager.FindByIdAsync(userId);
                 if (user == null)
                 {
-                    return NotFound(new { Message = "User not found" });
+                    return NotFound(new { Message = "Usuário não encontrado" });
                 }
 
                 var createdChallenges = await _context.Challenges
@@ -455,14 +456,13 @@ namespace FazaBoa_API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An error occurred while getting user profile.");
-                return StatusCode(500, new { Message = "An error occurred while getting user profile" });
+                _logger.LogError(ex, "Ocorreu um erro ao obter o perfil do usuário.");
+                return StatusCode(500, new { Message = "Ocorreu um erro ao obter o perfil do usuário" });
             }
         }
 
         // Métodos
         private Response CreateResponse(string status, string message, List<string> errors = null)
-
         {
             return new Response
             {
@@ -474,7 +474,7 @@ namespace FazaBoa_API.Controllers
 
         private JwtSecurityToken GenerateJwtToken(IEnumerable<Claim> claims)
         {
-            var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? throw new InvalidOperationException("JWT Key is not set in environment variables");
+            var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? throw new InvalidOperationException("A chave JWT não está definida nas variáveis de ambiente");
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -500,12 +500,12 @@ namespace FazaBoa_API.Controllers
         private ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
         {
             if (string.IsNullOrEmpty(token))
-                throw new ArgumentNullException(nameof(token), "Token cannot be null or empty");
+                throw new ArgumentNullException(nameof(token), "O token não pode ser nulo ou vazio");
 
             var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? _configuration["Jwt:Key"];
-            Log.Information("JWT Key loaded: {JwtKey}", jwtKey);  // Log para verificar a chave JWT
+            Log.Information("Chave JWT carregada: {JwtKey}", jwtKey);  // Log para verificar a chave JWT
             if (string.IsNullOrEmpty(jwtKey))
-                throw new InvalidOperationException("JWT Key is not set in configuration");
+                throw new InvalidOperationException("A chave JWT não está definida na configuração");
 
             var tokenValidationParameters = new TokenValidationParameters
             {
@@ -520,11 +520,10 @@ namespace FazaBoa_API.Controllers
             var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
             var jwtSecurityToken = securityToken as JwtSecurityToken;
             if (jwtSecurityToken == null || !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
-                throw new SecurityTokenException("Invalid token");
+                throw new SecurityTokenException("Token inválido");
 
             return principal;
         }
-
 
     }
 }

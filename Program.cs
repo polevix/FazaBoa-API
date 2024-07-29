@@ -76,9 +76,11 @@ builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddScoped<IValidator<Register>, RegisterValidator>();
 builder.Services.AddScoped<IValidator<ResetPassword>, ResetPasswordValidator>();
 builder.Services.AddScoped<IValidator<Group>, GroupValidator>();
+builder.Services.AddTransient<IValidator<IFormFile>, UploadPhotoValidator>();
 
 // Configurando serviços personalizados
 builder.Services.AddScoped<IEmailSender, EmailSender>();
+builder.Services.AddTransient<PhotoService>();
 
 // Configurando CORS
 builder.Services.AddCors(options =>
@@ -96,11 +98,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-//Configurando serviços
-builder.Services.AddScoped<PhotoService>();
-
-
-
+// Configurando controllers
 builder.Services.AddControllers();
 
 var app = builder.Build();

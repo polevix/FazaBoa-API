@@ -25,14 +25,16 @@ namespace FazaBoa_API.Controllers
         private readonly IConfiguration _configuration;
         private readonly ApplicationDbContext _context;
         private readonly IValidator<Register> _registerValidator;
+        private readonly IValidator<IFormFile> _uploadPhotoValidator;
         private readonly PhotoService _photoService;
         private readonly ILogger<UserController> _logger;
 
-        public UserController(UserManager<ApplicationUser> userManager, IConfiguration configuration, ApplicationDbContext context, IValidator<Register> registerValidator, PhotoService photoService, ILogger<UserController> logger)
+        public UserController(UserManager<ApplicationUser> userManager, IConfiguration configuration, ApplicationDbContext context, IValidator<Register> registerValidator, IValidator<IFormFile> uploadPhotoValidator, PhotoService photoService, ILogger<UserController> logger)
         {
             _userManager = userManager;
             _configuration = configuration;
             _context = context;
+            _uploadPhotoValidator = uploadPhotoValidator;
             _registerValidator = registerValidator;
             _photoService = photoService;
             _logger = logger;
@@ -285,14 +287,10 @@ namespace FazaBoa_API.Controllers
         [HttpPost("upload-photo")]
         public async Task<IActionResult> UploadProfilePhoto([FromForm] IFormFile photo)
         {
-            if (photo == null || photo.Length == 0)
+            var validationResult = _uploadPhotoValidator.Validate(photo);
+            if (!validationResult.IsValid)
             {
-                return BadRequest(new { Message = "Nenhum arquivo carregado" });
-            }
-
-            if (!photo.ContentType.StartsWith("image/"))
-            {
-                return BadRequest(new { Message = "Tipo de arquivo inválido. Apenas arquivos de imagem são permitidos" });
+                return BadRequest(new { Message = "Validação falhou", Errors = validationResult.Errors.Select(e => e.ErrorMessage) });
             }
 
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -462,7 +460,7 @@ namespace FazaBoa_API.Controllers
         }
 
         // Métodos
-        private Response CreateResponse(string status, string message, List<string> errors = null)
+        private Response CreateResponse(string status, string message, List<string>? errors = null)
         {
             return new Response
             {

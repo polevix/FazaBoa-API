@@ -2,6 +2,6 @@ namespace FazaBoa_API.Models
 {
     public class ForgotPassword
     {
-        public string Email { get; set; }
+        public string Email { get; set; } = string.Empty;
     }
 }

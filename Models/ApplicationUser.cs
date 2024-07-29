@@ -6,7 +6,7 @@ namespace FazaBoa_API.Models
 {
     public class ApplicationUser : IdentityUser
     {
-        public string FullName { get; set; }
+        public string FullName { get; set; }= string.Empty;
         public bool IsDependent { get; set; }
 
         [ForeignKey(nameof(MasterUser))]

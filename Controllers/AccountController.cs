@@ -6,6 +6,7 @@ using FluentValidation;
 using System.Net;
 using Serilog;
 using FluentValidation.Results;
+using Microsoft.AspNetCore.Authorization;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -15,14 +16,69 @@ public class AccountController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly IEmailSender _emailSender;
     private readonly IValidator<ResetPassword> _resetPasswordValidator;
+    private readonly IValidator<Register> _registerValidator;
 
     public AccountController(UserManager<ApplicationUser> userManager, IConfiguration configuration, IEmailSender emailSender,
-        IValidator<ResetPassword> resetPasswordValidator)
+        IValidator<ResetPassword> resetPasswordValidator, IValidator<Register> registerValidator)
     {
         _userManager = userManager;
         _configuration = configuration;
         _emailSender = emailSender;
         _resetPasswordValidator = resetPasswordValidator;
+        _registerValidator = registerValidator;
+    }
+    /// <summary>
+    /// Registra um novo usuário.
+    /// </summary>
+    /// <param name="model">Modelo contendo os dados do registro</param>
+    /// <returns>Retorna uma mensagem de sucesso ou erro</returns>
+    [HttpPost("register")]
+    [AllowAnonymous]
+    public async Task<IActionResult> RegisterUser([FromBody] Register model)
+    {
+        ValidationResult validationResult = await _registerValidator.ValidateAsync(model);
+        if (!validationResult.IsValid)
+        {
+            return BadRequest(CreateResponse("Error", "Validation Failed", validationResult.Errors.Select(e => e.ErrorMessage).ToList()));
+        }
+
+        if (await _userManager.FindByEmailAsync(model.Email) != null)
+        {
+            return Conflict(CreateResponse("Error", "User already exists", new List<string> { "O email fornecido já está registrado." }));
+        }
+
+        try
+        {
+            var user = new ApplicationUser
+            {
+                Email = model.Email,
+                SecurityStamp = Guid.NewGuid().ToString(),
+                UserName = model.Email,
+                FullName = model.FullName,
+                IsDependent = model.IsDependent,
+                MasterUserId = model.IsDependent ? model.MasterUserId : null
+            };
+
+            var result = await _userManager.CreateAsync(user, model.Password);
+
+            if (!result.Succeeded)
+            {
+                Log.Error("Failed to create user: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
+                return StatusCode(StatusCodes.Status500InternalServerError, CreateResponse("Error", "Falha ao criar usuário! Verifique os detalhes do usuário e tente novamente.", result.Errors.Select(e => e.Description).ToList()));
+            }
+
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var confirmationLink = $"{_configuration["ClientAppUrl"]}/confirm-email?userId={user.Id}&token={Uri.EscapeDataString(token)}";
+
+            Log.Information("Confirmation Link: {Link}", confirmationLink);
+
+            return Ok(CreateResponse("Success", "Usuário criado com sucesso!"));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Exception occurred while creating user");
+            return StatusCode(StatusCodes.Status500InternalServerError, CreateResponse("Error", "Erro interno do servidor", new List<string> { ex.Message }));
+        }
     }
 
     /// <summary>
@@ -31,6 +87,7 @@ public class AccountController : ControllerBase
     /// <param name="model">Modelo contendo o email do usuário</param>
     /// <returns>Retorna uma mensagem de sucesso ou erro</returns>
     [HttpPost("forgot-password")]
+    [AllowAnonymous]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPassword model)
     {
         if (string.IsNullOrEmpty(model.Email))
@@ -61,6 +118,7 @@ public class AccountController : ControllerBase
     /// <param name="model">Modelo contendo o email do usuário, token e nova senha</param>
     /// <returns>Retorna uma mensagem de sucesso ou erro</returns>
     [HttpPost("reset-password")]
+    [AllowAnonymous]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPassword model)
     {
         // Validar o modelo usando FluentValidation
@@ -86,4 +144,17 @@ public class AccountController : ControllerBase
 
         return Ok(new { Message = "Senha redefinida com sucesso" });
     }
+
+    //Métodos
+    private Response CreateResponse(string status, string message, List<string>? errors = null)
+    {
+        return new Response
+        {
+            Status = status,
+            Message = message,
+            Errors = errors ?? new List<string>()
+        };
+    }
 }
+
+

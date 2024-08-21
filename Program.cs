@@ -1,5 +1,7 @@
+using APP.Validation;
 using DotNetEnv;
 using FazaBoa_API.Data;
+using FazaBoa_API.Dtos;
 using FazaBoa_API.Models;
 using FazaBoa_API.Services;
 using FazaBoa_API.Validation;
@@ -67,6 +69,7 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
         ValidAudience = builder.Configuration["Jwt:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        ClockSkew = TimeSpan.Zero,
         NameClaimType = ClaimTypes.NameIdentifier
     };
 });
@@ -75,12 +78,13 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddScoped<IValidator<Register>, RegisterValidator>();
 builder.Services.AddScoped<IValidator<ResetPassword>, ResetPasswordValidator>();
-builder.Services.AddScoped<IValidator<Group>, GroupValidator>();
-builder.Services.AddTransient<IValidator<IFormFile>, UploadPhotoValidator>();
+builder.Services.AddScoped<IValidator<IFormFile>, UploadProfilePhotoValidator>();
+builder.Services.AddScoped<IValidator<Challenge>, ChallengeValidator>();
+builder.Services.AddScoped<IValidator<GroupCreationDto>, GroupCreationDtoValidator>();
 
 // Configurando serviços personalizados
 builder.Services.AddScoped<IEmailSender, EmailSender>();
-builder.Services.AddTransient<PhotoService>();
+builder.Services.AddScoped<PhotoService>();
 
 // Configurando CORS
 builder.Services.AddCors(options =>
@@ -108,12 +112,13 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles(); // Certifique-se de que esta linha está presente para servir arquivos estáticos
-app.UseCors("AllowAll");
+app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseCors("AllowAll");
 app.MapControllers();
 app.Run();

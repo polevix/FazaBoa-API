@@ -1,11 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using FazaBoa_API.Models;
 using FazaBoa_API.Data;
+using FazaBoa_API.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using FluentValidation;
 using FluentValidation.Results;
+using FazaBoa_API.Services;
+using Serilog;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -13,12 +17,17 @@ using FluentValidation.Results;
 public class GroupController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
-    private readonly IValidator<Group> _groupValidator;
+    private readonly IValidator<GroupCreationDto> _groupValidator;
+    private readonly PhotoService _photoService;
+    private readonly UserManager<ApplicationUser> _userManager;
 
-    public GroupController(ApplicationDbContext context, IValidator<Group> groupValidator)
+    public GroupController(UserManager<ApplicationUser> userManager, ApplicationDbContext context, IValidator<GroupCreationDto> groupValidator,
+     PhotoService photoService)
     {
+        _userManager = userManager;
         _context = context;
         _groupValidator = groupValidator;
+        _photoService = photoService;
     }
 
     /// <summary>
@@ -26,25 +35,42 @@ public class GroupController : ControllerBase
     /// </summary>
     /// <param name="group">Modelo contendo os dados do grupo</param>
     /// <returns>Retorna o grupo criado ou uma mensagem de erro</returns>
-    [HttpPost]
-    public async Task<IActionResult> CreateGroup([FromBody] Group group)
+    [HttpPost("create-group")]
+    [Authorize]
+    public async Task<IActionResult> CreateGroup([FromForm] GroupCreationDto groupDto)
     {
         // Validação do modelo
-        ValidationResult validationResult = await _groupValidator.ValidateAsync(group);
+        var validationResult = await _groupValidator.ValidateAsync(groupDto);
         if (!validationResult.IsValid)
         {
             return BadRequest(new { Message = "Dados do grupo inválidos", Errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList() });
         }
 
-        // Obtém o ID do usuário autenticado
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userId == null)
         {
             return Unauthorized(new { Message = "Usuário não autorizado" });
         }
 
-        group.CreatedById = userId;
-        group.Members.Add(new ApplicationUser { Id = userId });
+        // Busca o usuário no banco de dados
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+        {
+            return NotFound(new { Message = "Usuário não encontrado" });
+        }
+
+        // Configura o grupo com os dados do DTO
+        var group = new Group
+        {
+            Name = groupDto.Name,
+            Description = groupDto.Description,
+            HasUniqueRewards = groupDto.HasUniqueRewards,
+            CreatedById = userId,
+            PhotoUrl = groupDto.Photo != null ? await _photoService.UploadPhotoAsync(groupDto.Photo, userId) : "/default-photo.png"
+        };
+
+        // Adiciona o usuário como membro
+        group.Members.Add(user);
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
         try
@@ -53,13 +79,26 @@ public class GroupController : ControllerBase
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
         }
-        catch
+        catch (Exception ex)
         {
             await transaction.RollbackAsync();
+            Log.Error(ex, "Erro ao criar o grupo para o usuário {UserId}", userId);
             return StatusCode(500, new { Message = "Erro ao criar o grupo" });
         }
 
-        return Ok(group);
+        return Ok(new
+        {
+            Message = "Grupo criado com sucesso",
+            Group = new
+            {
+                group.Id,
+                group.Name,
+                group.Description,
+                group.PhotoUrl,
+                CreatedBy = new { user.Id, user.FullName }
+            }
+        });
+
     }
 
     /// <summary>
@@ -68,7 +107,7 @@ public class GroupController : ControllerBase
     /// <param name="groupId">ID do grupo</param>
     /// <returns>Retorna os detalhes do grupo ou uma mensagem de erro</returns>
     [HttpGet("{groupId}")]
-    public async Task<IActionResult> GetGroupDetails(int groupId)
+    public async Task<IActionResult> GetGroupDetails(Guid groupId)
     {
         var group = await _context.Groups
             .Include(g => g.Members)
@@ -114,7 +153,7 @@ public class GroupController : ControllerBase
     /// <param name="userId">ID do usuário</param>
     /// <returns>Retorna uma mensagem de sucesso ou erro</returns>
     [HttpPost("{groupId}/add-member")]
-    public async Task<IActionResult> AddMember(int groupId, [FromBody] string userId)
+    public async Task<IActionResult> AddMember(Guid groupId, [FromBody] string userId)
     {
         var group = await _context.Groups.Include(g => g.Members).FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)
@@ -140,7 +179,7 @@ public class GroupController : ControllerBase
     /// <param name="userId">ID do usuário</param>
     /// <returns>Retorna uma mensagem de sucesso ou erro</returns>
     [HttpPost("{groupId}/remove-member")]
-    public async Task<IActionResult> RemoveMember(int groupId, [FromBody] string userId)
+    public async Task<IActionResult> RemoveMember(Guid groupId, [FromBody] string userId)
     {
         var group = await _context.Groups.Include(g => g.Members).FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)
@@ -162,7 +201,7 @@ public class GroupController : ControllerBase
     /// <param name="userId">ID do usuário</param>
     /// <returns>Retorna uma mensagem de sucesso ou erro</returns>
     [HttpPost("{groupId}/mark-dependent")]
-    public async Task<IActionResult> MarkAsDependent(int groupId, [FromBody] string userId)
+    public async Task<IActionResult> MarkAsDependent(Guid groupId, [FromBody] string userId)
     {
         var group = await _context.Groups.Include(g => g.Members).FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)
@@ -194,7 +233,7 @@ public class GroupController : ControllerBase
     /// <param name="dependentEmail">Email do dependente</param>
     /// <returns>Retorna uma mensagem de sucesso ou erro</returns>
     [HttpPost("{groupId}/add-dependent")]
-    public async Task<IActionResult> AddDependent(int groupId, [FromBody] string dependentEmail)
+    public async Task<IActionResult> AddDependent(Guid groupId, [FromBody] string dependentEmail)
     {
         var group = await _context.Groups.Include(g => g.Members).FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)
@@ -225,7 +264,7 @@ public class GroupController : ControllerBase
     /// <param name="groupId">ID do grupo</param>
     /// <returns>Retorna uma lista de dependentes ou uma mensagem de erro</returns>
     [HttpGet("{groupId}/dependents")]
-    public async Task<IActionResult> GetDependents(int groupId)
+    public async Task<IActionResult> GetDependents(Guid groupId)
     {
         var group = await _context.Groups.Include(g => g.Members).FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)
@@ -250,7 +289,7 @@ public class GroupController : ControllerBase
     /// <param name="email">Email do usuário a ser convidado</param>
     /// <returns>Retorna uma mensagem de sucesso ou erro</returns>
     [HttpPost("{groupId}/invite")]
-    public async Task<IActionResult> InviteMember(int groupId, [FromBody] string email)
+    public async Task<IActionResult> InviteMember(Guid groupId, [FromBody] string email)
     {
         var group = await _context.Groups.Include(g => g.Members).FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)
@@ -287,7 +326,7 @@ public class GroupController : ControllerBase
     /// <param name="userId">ID do usuário</param>
     /// <returns>Retorna uma mensagem de sucesso ou erro</returns>
     [HttpPost("{groupId}/accept-invite")]
-    public async Task<IActionResult> AcceptInvite(int groupId, [FromBody] string userId)
+    public async Task<IActionResult> AcceptInvite(Guid groupId, [FromBody] string userId)
     {
         var group = await _context.Groups.Include(g => g.Members).FirstOrDefaultAsync(g => g.Id == groupId);
         var user = await _context.Users.FindAsync(userId);
@@ -314,7 +353,7 @@ public class GroupController : ControllerBase
     /// <param name="updatedGroup">Modelo contendo os dados atualizados do grupo</param>
     /// <returns>Retorna o grupo atualizado ou uma mensagem de erro</returns>
     [HttpPut("{groupId}")]
-    public async Task<IActionResult> UpdateGroup(int groupId, [FromBody] Group updatedGroup)
+    public async Task<IActionResult> UpdateGroup(Guid groupId, [FromBody] Group updatedGroup)
     {
         var group = await _context.Groups.FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)
@@ -350,7 +389,7 @@ public class GroupController : ControllerBase
     /// <param name="userId">ID do usuário</param>
     /// <returns>Retorna uma mensagem de sucesso ou erro</returns>
     [HttpDelete("{groupId}/remove-dependent/{userId}")]
-    public async Task<IActionResult> RemoveDependent(int groupId, string userId)
+    public async Task<IActionResult> RemoveDependent(Guid groupId, string userId)
     {
         var group = await _context.Groups.Include(g => g.Members).FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)
@@ -378,7 +417,7 @@ public class GroupController : ControllerBase
     /// <param name="groupId">ID do grupo</param>
     /// <returns>Retorna uma mensagem de sucesso ou erro</returns>
     [HttpDelete("{groupId}")]
-    public async Task<IActionResult> DeleteGroup(int groupId)
+    public async Task<IActionResult> DeleteGroup(Guid groupId)
     {
         var group = await _context.Groups.FirstOrDefaultAsync(g => g.Id == groupId);
         if (group == null)

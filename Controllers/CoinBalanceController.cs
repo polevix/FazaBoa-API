@@ -23,7 +23,7 @@ public class CoinBalanceController : ControllerBase
     /// <param name="groupId">ID do grupo</param>
     /// <returns>Retorna o saldo de moedas ou uma mensagem de erro</returns>
     [HttpGet("{userId}/{groupId}")]
-    public async Task<IActionResult> GetBalance(string userId, int groupId)
+    public async Task<IActionResult> GetBalance(string userId, Guid groupId)
     {
         var balance = await _context.CoinBalances.FirstOrDefaultAsync(b => b.UserId == userId && b.GroupId == groupId);
         if (balance == null)
@@ -42,7 +42,7 @@ public class CoinBalanceController : ControllerBase
     /// <param name="amount">Quantidade de moedas a serem adicionadas</param>
     /// <returns>Retorna o saldo atualizado ou uma mensagem de erro</returns>
     [HttpPost("{userId}/{groupId}/add")]
-    public async Task<IActionResult> AddBalance(string userId, int groupId, [FromBody] int amount)
+    public async Task<IActionResult> AddBalance(string userId, Guid groupId, [FromBody] int amount)
     {
         if (amount < 0)
         {
@@ -69,7 +69,7 @@ public class CoinBalanceController : ControllerBase
     /// <param name="amount">Quantidade de moedas a serem deduzidas</param>
     /// <returns>Retorna o saldo atualizado ou uma mensagem de erro</returns>
     [HttpPost("{userId}/{groupId}/spend")]
-    public async Task<IActionResult> SpendBalance(string userId, int groupId, [FromBody] int amount)
+    public async Task<IActionResult> SpendBalance(string userId, Guid groupId, [FromBody] int amount)
     {
         if (amount < 0)
         {

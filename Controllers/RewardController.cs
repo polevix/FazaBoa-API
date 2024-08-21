@@ -60,7 +60,7 @@ public class RewardController : ControllerBase
     /// <param name="groupId">ID do grupo</param>
     /// <returns>Retorna uma lista de recompensas ou uma mensagem de erro</returns>
     [HttpGet("group/{groupId}")]
-    public async Task<IActionResult> GetRewardsByGroup(int groupId)
+    public async Task<IActionResult> GetRewardsByGroup(Guid groupId)
     {
         var rewards = await _context.Rewards.Where(r => r.GroupId == groupId).ToListAsync();
         return Ok(rewards.Select(r => new
@@ -116,7 +116,7 @@ public class RewardController : ControllerBase
     /// <param name="userId">ID do usuário</param>
     /// <returns>Retorna o saldo atualizado ou uma mensagem de erro</returns>
     [HttpPost("{rewardId}/redeem")]
-    public async Task<IActionResult> RedeemReward(int rewardId, [FromBody] string userId)
+    public async Task<IActionResult> RedeemReward(Guid rewardId, [FromBody] string userId)
     {
         await using var transaction = await _context.Database.BeginTransactionAsync();
         try
@@ -167,7 +167,7 @@ public class RewardController : ControllerBase
     /// <param name="userId">ID do usuário</param>
     /// <returns>Retorna uma lista de recompensas resgatadas ou uma mensagem de erro</returns>
     [HttpGet("group/{groupId}/redeemed-by/{userId}")]
-    public async Task<IActionResult> GetRewardsRedeemedByUserInGroup(int groupId, string userId)
+    public async Task<IActionResult> GetRewardsRedeemedByUserInGroup(Guid groupId, string userId)
     {
         var rewards = await _context.RewardTransactions
             .Include(rt => rt.Reward)

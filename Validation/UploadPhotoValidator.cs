@@ -3,16 +3,18 @@ using Microsoft.AspNetCore.Http;
 
 namespace FazaBoa_API.Validation
 {
-    public class UploadPhotoValidator : AbstractValidator<IFormFile>
+    public class UploadProfilePhotoValidator : AbstractValidator<IFormFile>
     {
-        public UploadPhotoValidator()
+        public UploadProfilePhotoValidator()
         {
-            RuleFor(photo => photo)
-                .NotNull().WithMessage("Nenhum arquivo carregado")
-                .Must(photo => photo.Length > 0).WithMessage("O arquivo está vazio")
-                .Must(photo => photo.ContentType.StartsWith("image/")).WithMessage("Tipo de arquivo inválido. Apenas arquivos de imagem são permitidos")
-                .Must(photo => new[] { ".jpg", ".jpeg", ".png" }.Contains(Path.GetExtension(photo.FileName).ToLower())).WithMessage("Apenas arquivos JPG, JPEG e PNG são permitidos")
-                .Must(photo => photo.Length <= 2 * 1024 * 1024).WithMessage("O tamanho do arquivo não pode exceder 2MB");
+            RuleFor(file => file).NotNull().WithMessage("Nenhum arquivo carregado.");
+            RuleFor(file => file.Length).GreaterThan(0).WithMessage("O arquivo não pode estar vazio.");
+            //RuleFor(file => file.Length).LessThan(2).WithMessage("Deve ser apenas um arquivo."); verificar se é possível validar pelo front-end
+            RuleFor(file => file.ContentType).Must(contentType => contentType.StartsWith("image/"))
+                .WithMessage("Tipo de arquivo inválido. Apenas arquivos de imagem são permitidos.");
+            RuleFor(file => file.Length).LessThanOrEqualTo(5 * 1024 * 1024) // 5 MB
+                .WithMessage("O tamanho do arquivo não pode exceder 5 MB.");
         }
     }
 }
+

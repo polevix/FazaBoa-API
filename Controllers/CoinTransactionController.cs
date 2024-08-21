@@ -28,7 +28,7 @@ namespace FazaBoa_API.Controllers
         }
 
         [HttpGet("group/{groupId}")]
-        public async Task<IActionResult> GetTransactionsByGroup(int groupId)
+        public async Task<IActionResult> GetTransactionsByGroup(Guid groupId)
         {
             var transactions = await _context.CoinTransactions
                 .Where(t => t.GroupId == groupId)
@@ -38,7 +38,7 @@ namespace FazaBoa_API.Controllers
         }
 
         [HttpGet("user/{userId}/group/{groupId}")]
-        public async Task<IActionResult> GetTransactionsByUserAndGroup(string userId, int groupId)
+        public async Task<IActionResult> GetTransactionsByUserAndGroup(string userId, Guid groupId)
         {
             var transactions = await _context.CoinTransactions
                 .Where(t => t.UserId == userId && t.GroupId == groupId)

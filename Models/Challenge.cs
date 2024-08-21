@@ -5,7 +5,7 @@ namespace FazaBoa_API.Models
 {
     public class Challenge
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public int CoinValue { get; set; }
@@ -13,7 +13,7 @@ namespace FazaBoa_API.Models
         public DateTime? EndDate { get; set; }
         public bool IsDaily { get; set; }
 
-        public int GroupId { get; set; }
+        public Guid GroupId { get; set; }
         public virtual Group Group { get; set; } = default!;
 
         public string CreatedById { get; set; } = string.Empty;

@@ -4,6 +4,8 @@ using FazaBoa_API.Data;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using FluentValidation;
+using FluentValidation.Results;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -11,10 +13,12 @@ using Microsoft.EntityFrameworkCore;
 public class ChallengeController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly IValidator<Challenge> _challengeValidator;
 
-    public ChallengeController(ApplicationDbContext context)
+    public ChallengeController(ApplicationDbContext context, IValidator<Challenge> challengeValidator)
     {
         _context = context;
+        _challengeValidator = challengeValidator;
     }
 
     /// <summary>
@@ -25,15 +29,22 @@ public class ChallengeController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateChallenge([FromBody] Challenge challenge)
     {
-        if (!ModelState.IsValid || string.IsNullOrEmpty(challenge.Name) || challenge.GroupId <= 0)
+        ValidationResult result = await _challengeValidator.ValidateAsync(challenge);
+        if (!result.IsValid)
         {
-            return BadRequest(new { Message = "Dados do desafio inválidos" });
+            return BadRequest(new { Message = "Dados do desafio inválidos", Errors = result.Errors.Select(e => e.ErrorMessage) });
         }
 
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userId == null)
         {
             return Unauthorized(new { Message = "Usuário não autorizado" });
+        }
+
+        var group = await _context.Groups.FindAsync(challenge.GroupId);
+        if (group == null)
+        {
+            return NotFound(new { Message = "Grupo não encontrado" });
         }
 
         challenge.CreatedById = userId;
@@ -45,10 +56,10 @@ public class ChallengeController : ControllerBase
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
         }
-        catch
+        catch (Exception ex)
         {
             await transaction.RollbackAsync();
-            return StatusCode(500, new { Message = "Erro ao criar desafio" });
+            return StatusCode(500, new { Message = "Erro ao criar desafio", Details = ex.Message });
         }
 
         return Ok(challenge);
@@ -61,7 +72,7 @@ public class ChallengeController : ControllerBase
     /// <param name="id">ID do desafio</param>
     /// <returns>Retorna os detalhes do desafio ou uma mensagem de erro</returns>
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetChallengeDetails(int id)
+    public async Task<IActionResult> GetChallengeDetails(Guid id)
     {
         var challenge = await _context.Challenges
             .Include(c => c.AssignedUsers)
@@ -138,7 +149,7 @@ public class ChallengeController : ControllerBase
     /// <param name="userIds">Lista de IDs de usuários</param>
     /// <returns>Retorna uma mensagem de sucesso ou erro</returns>
     [HttpPut("{id}/assign")]
-    public async Task<IActionResult> AssignChallengeToUsers(int id, [FromBody] List<string> userIds)
+    public async Task<IActionResult> AssignChallengeToUsers(Guid id, [FromBody] List<string> userIds)
     {
         var challenge = await _context.Challenges.Include(c => c.AssignedUsers).FirstOrDefaultAsync(c => c.Id == id);
         if (challenge == null)
@@ -248,7 +259,7 @@ public class ChallengeController : ControllerBase
     /// <param name="userId">ID do usuário</param>
     /// <returns>Retorna uma mensagem de sucesso ou erro</returns>
     [HttpPost("{id}/complete")]
-    public async Task<IActionResult> MarkChallengeAsCompleted(int id, [FromBody] string userId)
+    public async Task<IActionResult> MarkChallengeAsCompleted(Guid id, [FromBody] string userId)
     {
         var challenge = await _context.Challenges.Include(c => c.AssignedUsers).FirstOrDefaultAsync(c => c.Id == id);
         if (challenge == null)
@@ -299,7 +310,7 @@ public class ChallengeController : ControllerBase
     /// <param name="model">Modelo contendo o ID do usuário e se o desafio foi concluído</param>
     /// <returns>Retorna uma mensagem de sucesso ou erro</returns>
     [HttpPost("{id}/validate")]
-    public async Task<IActionResult> ValidateChallengeCompletion(int id, [FromBody] ValidateChallenge model)
+    public async Task<IActionResult> ValidateChallengeCompletion(Guid id, [FromBody] ValidateChallenge model)
     {
         var challenge = await _context.Challenges.FirstOrDefaultAsync(c => c.Id == id);
         if (challenge == null)
@@ -350,7 +361,7 @@ public class ChallengeController : ControllerBase
     /// <param name="userId">ID do usuário</param>
     /// <param name="groupId">ID do grupo</param>
     /// <param name="coinsToAdd">Número de moedas a serem adicionadas</param>
-    private async Task AddCoinsToUserBalance(string userId, int groupId, int coinsToAdd)
+    private async Task AddCoinsToUserBalance(string userId, Guid groupId, int coinsToAdd)
     {
         await using var transaction = await _context.Database.BeginTransactionAsync();
         try

@@ -2,10 +2,10 @@ namespace FazaBoa_API.Models
 {
     public class CoinBalance
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
         public string UserId { get; set; } = string.Empty;
         public virtual ApplicationUser User { get; set; } = default!;
-        public int GroupId { get; set; }
+        public Guid GroupId { get; set; }
         public virtual Group Group { get; set; } = default!;
         public int Balance { get; set; }
     }

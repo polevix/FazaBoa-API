@@ -29,69 +29,16 @@ namespace FazaBoa_API.Controllers
         private readonly PhotoService _photoService;
         private readonly ILogger<UserController> _logger;
 
-        public UserController(UserManager<ApplicationUser> userManager, IConfiguration configuration, ApplicationDbContext context, IValidator<Register> registerValidator, IValidator<IFormFile> uploadPhotoValidator, PhotoService photoService, ILogger<UserController> logger)
+        public UserController(UserManager<ApplicationUser> userManager, IConfiguration configuration, ApplicationDbContext context,
+            IValidator<IFormFile> uploadPhotoValidator, PhotoService photoService, ILogger<UserController> logger, IValidator<Register> registerValidator)
         {
             _userManager = userManager;
             _configuration = configuration;
             _context = context;
             _uploadPhotoValidator = uploadPhotoValidator;
-            _registerValidator = registerValidator;
             _photoService = photoService;
             _logger = logger;
-        }
-
-        /// <summary>
-        /// Registra um novo usuário.
-        /// </summary>
-        /// <param name="model">Modelo contendo os dados do registro</param>
-        /// <returns>Retorna uma mensagem de sucesso ou erro</returns>
-        [AllowAnonymous]
-        [HttpPost("register")]
-        public async Task<IActionResult> RegisterUser([FromBody] Register model)
-        {
-            ValidationResult validationResult = await _registerValidator.ValidateAsync(model);
-            if (!validationResult.IsValid)
-            {
-                return BadRequest(CreateResponse("Error", "Validation Failed", validationResult.Errors.Select(e => e.ErrorMessage).ToList()));
-            }
-
-            if (await _userManager.FindByEmailAsync(model.Email) != null)
-            {
-                return Conflict(CreateResponse("Error", "User already exists", new List<string> { "O email fornecido já está registrado." }));
-            }
-
-            try
-            {
-                var user = new ApplicationUser
-                {
-                    Email = model.Email,
-                    SecurityStamp = Guid.NewGuid().ToString(),
-                    UserName = model.Email,
-                    FullName = model.FullName,
-                    IsDependent = model.IsDependent,
-                    MasterUserId = model.IsDependent ? model.MasterUserId : null
-                };
-
-                var result = await _userManager.CreateAsync(user, model.Password);
-
-                if (!result.Succeeded)
-                {
-                    Log.Error("Failed to create user: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
-                    return StatusCode(StatusCodes.Status500InternalServerError, CreateResponse("Error", "Falha ao criar usuário! Verifique os detalhes do usuário e tente novamente.", result.Errors.Select(e => e.Description).ToList()));
-                }
-
-                var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                var confirmationLink = $"{_configuration["ClientAppUrl"]}/confirm-email?userId={user.Id}&token={Uri.EscapeDataString(token)}";
-
-                Log.Information("Confirmation Link: {Link}", confirmationLink);
-
-                return Ok(CreateResponse("Success", "Usuário criado com sucesso!"));
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Exception occurred while creating user");
-                return StatusCode(StatusCodes.Status500InternalServerError, CreateResponse("Error", "Erro interno do servidor", new List<string> { ex.Message }));
-            }
+            _registerValidator = registerValidator;
         }
 
         /// <summary>
@@ -99,8 +46,8 @@ namespace FazaBoa_API.Controllers
         /// </summary>
         /// <param name="model">Modelo contendo os dados do login</param>
         /// <returns>Retorna um token JWT ou uma mensagem de erro</returns>
-        [AllowAnonymous]
         [HttpPost("login")]
+        [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] Login model)
         {
             try
@@ -197,7 +144,7 @@ namespace FazaBoa_API.Controllers
         /// </summary>
         /// <returns>Retorna o token atualizado</returns>
         [HttpPost("refresh-token")]
-        [AllowAnonymous]
+        [Authorize]
         public async Task<IActionResult> RefreshToken([FromBody] TokenApi model)
         {
             if (model == null || string.IsNullOrEmpty(model.Token) || string.IsNullOrEmpty(model.RefreshToken))
@@ -239,9 +186,9 @@ namespace FazaBoa_API.Controllers
         /// Realiza o login de um dependente.
         /// </summary>
         /// <param name="model">Modelo contendo os dados do login do dependente</param>
-        /// <returns>Retorna um token JWT ou uma mensagem de erro</returns>
-        [AllowAnonymous]
+        /// <returns>Retorna um token JWT ou uma mensagem de erro</returns>        
         [HttpPost("dependent-login")]
+        [Authorize]
         public async Task<IActionResult> DependentLogin([FromBody] DependentLogin model)
         {
             var masterUser = await _userManager.FindByEmailAsync(model.MasterUserEmail);
@@ -285,12 +232,17 @@ namespace FazaBoa_API.Controllers
         /// <param name="photo">Foto a ser carregada</param>
         /// <returns>Retorna a URL da foto carregada ou uma mensagem de erro</returns>
         [HttpPost("upload-photo")]
+        [Authorize]
         public async Task<IActionResult> UploadProfilePhoto([FromForm] IFormFile photo)
         {
-            var validationResult = _uploadPhotoValidator.Validate(photo);
-            if (!validationResult.IsValid)
+            if (photo == null || photo.Length == 0)
             {
-                return BadRequest(new { Message = "Validação falhou", Errors = validationResult.Errors.Select(e => e.ErrorMessage) });
+                return BadRequest(new { Message = "Nenhum arquivo carregado" });
+            }
+
+            if (!photo.ContentType.StartsWith("image/"))
+            {
+                return BadRequest(new { Message = "Tipo de arquivo inválido. Apenas arquivos de imagem são permitidos" });
             }
 
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -307,6 +259,17 @@ namespace FazaBoa_API.Controllers
 
             var directoryPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "profile-photos");
             Directory.CreateDirectory(directoryPath);
+
+            // Deletar a foto antiga, se existir
+            if (!string.IsNullOrEmpty(user.ProfilePhotoUrl))
+            {
+                var oldFilePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", user.ProfilePhotoUrl.TrimStart('/'));
+                if (System.IO.File.Exists(oldFilePath))
+                {
+                    System.IO.File.Delete(oldFilePath);
+                }
+            }
+
             var fileName = $"{userId}_{Guid.NewGuid()}{Path.GetExtension(photo.FileName)}";
             var filePath = Path.Combine(directoryPath, fileName);
 
@@ -334,11 +297,13 @@ namespace FazaBoa_API.Controllers
             }
         }
 
+
         /// <summary>
         /// Exclui a foto de perfil do usuário.
         /// </summary>
         /// <returns>Retorna uma mensagem de sucesso ou erro</returns>
         [HttpDelete("delete-photo")]
+        [Authorize]
         public async Task<IActionResult> DeleteProfilePhoto()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -353,9 +318,9 @@ namespace FazaBoa_API.Controllers
                 return NotFound(new { Message = "Usuário não encontrado" });
             }
 
-            if (string.IsNullOrEmpty(user.ProfilePhotoUrl))
+            if (string.IsNullOrEmpty(user.ProfilePhotoUrl) || user.ProfilePhotoUrl == "/profile-photos/default.png")
             {
-                return BadRequest(new { Message = "Nenhuma foto de perfil para excluir" });
+                return BadRequest(new { Message = "Nenhuma foto de perfil para excluir ou já está usando a foto padrão" });
             }
 
             var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", user.ProfilePhotoUrl.TrimStart('/'));
@@ -365,10 +330,10 @@ namespace FazaBoa_API.Controllers
                 try
                 {
                     System.IO.File.Delete(filePath);
-                    user.ProfilePhotoUrl = null;
+                    user.ProfilePhotoUrl = "/profile-photos/default.png"; // Define a foto padrão
                     await _userManager.UpdateAsync(user);
 
-                    return Ok(new { Message = "Foto do perfil excluída com sucesso" });
+                    return Ok(new { Message = "Foto do perfil excluída com sucesso e revertida para a padrão", PhotoUrl = user.ProfilePhotoUrl });
                 }
                 catch (Exception ex)
                 {
@@ -389,6 +354,7 @@ namespace FazaBoa_API.Controllers
         /// <param name="userId">ID do usuário</param>
         /// <returns>Retorna os detalhes do perfil ou uma mensagem de erro</returns>
         [HttpGet("profile")]
+        [Authorize]
         public async Task<IActionResult> GetUserProfile()
         {
             try
@@ -460,16 +426,6 @@ namespace FazaBoa_API.Controllers
         }
 
         // Métodos
-        private Response CreateResponse(string status, string message, List<string>? errors = null)
-        {
-            return new Response
-            {
-                Status = status,
-                Message = message,
-                Errors = errors ?? new List<string>()
-            };
-        }
-
         private JwtSecurityToken GenerateJwtToken(IEnumerable<Claim> claims)
         {
             var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? throw new InvalidOperationException("A chave JWT não está definida nas variáveis de ambiente");
